@@ -1,0 +1,541 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Start Guide &mdash; CallMeFair 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Grid Search Guide" href="grid_search_guide.html" />
+    <link rel="prev" title="CallMeFair Documentation" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            CallMeFair
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#available-bias-mitigation-techniques">Available Bias Mitigation Techniques</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#preprocessing-techniques">Preprocessing Techniques</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#in-processing-techniques">In-processing Techniques</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#postprocessing-techniques">Postprocessing Techniques</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#evaluation-and-metrics">Evaluation and Metrics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fairness-score-calculation">Fairness Score Calculation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-usage">Advanced Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#bias-search-and-evaluation">Bias Search and Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#grid-search-for-bias-mitigation-combinations">Grid Search for Bias Mitigation Combinations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#combining-multiple-techniques">Combining Multiple Techniques</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-evaluation">Custom Evaluation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-issues-and-solutions">Common Issues and Solutions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="grid_search_guide.html">Grid Search Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility_guide.html">Utility Functions Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bias_search_guide.html">Bias Search Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CallMeFair</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Quick Start Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/user_guide/quickstart.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quick-start-guide">
+<h1>Quick Start Guide<a class="headerlink" href="#quick-start-guide" title="Link to this heading"></a></h1>
+<p>This guide will help you get started with CallMeFair, a comprehensive framework for bias mitigation in AI systems. You’ll learn how to install the framework, load your data, and apply various bias mitigation techniques.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p>First, install CallMeFair and its dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>callmefair
+</pre></div>
+</div>
+<p>Or install from source:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-repo/callmefair.git
+<span class="nb">cd</span><span class="w"> </span>callmefair
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</pre></div>
+</div>
+</section>
+<section id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading"></a></h2>
+<p>Here’s a simple example that demonstrates the core functionality:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.util.fair_util</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMInterface</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.mitigation.fair_bm</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMManager</span>
+
+<span class="c1"># Load your data</span>
+<span class="c1"># Replace with your actual data files</span>
+<span class="n">train_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;train.csv&#39;</span><span class="p">)</span>
+<span class="n">val_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;val.csv&#39;</span><span class="p">)</span>
+<span class="n">test_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;test.csv&#39;</span><span class="p">)</span>
+
+<span class="c1"># Initialize the bias mitigation interface</span>
+<span class="n">bm_interface</span> <span class="o">=</span> <span class="n">BMInterface</span><span class="p">(</span>
+    <span class="n">df_train</span><span class="o">=</span><span class="n">train_df</span><span class="p">,</span>
+    <span class="n">df_val</span><span class="o">=</span><span class="n">val_df</span><span class="p">,</span>
+    <span class="n">df_test</span><span class="o">=</span><span class="n">test_df</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="s1">&#39;target&#39;</span><span class="p">,</span>  <span class="c1"># Your target column name</span>
+    <span class="n">protected</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">]</span>  <span class="c1"># Your protected attributes</span>
+<span class="p">)</span>
+
+<span class="c1"># Define privileged and unprivileged groups</span>
+<span class="n">privileged_groups</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;gender&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}]</span>  <span class="c1"># Male group</span>
+<span class="n">unprivileged_groups</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;gender&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}]</span>  <span class="c1"># Female group</span>
+
+<span class="c1"># Create bias mitigation manager</span>
+<span class="n">bm_manager</span> <span class="o">=</span> <span class="n">BMManager</span><span class="p">(</span>
+    <span class="n">bmI</span><span class="o">=</span><span class="n">bm_interface</span><span class="p">,</span>
+    <span class="n">privileged_group</span><span class="o">=</span><span class="n">privileged_groups</span><span class="p">,</span>
+    <span class="n">unprivileged_group</span><span class="o">=</span><span class="n">unprivileged_groups</span>
+<span class="p">)</span>
+
+<span class="c1"># Apply preprocessing bias mitigation</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_Reweighing</span><span class="p">()</span>
+
+<span class="c1"># Train a model (example with sklearn)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">bm_interface</span><span class="o">.</span><span class="n">get_train_xy</span><span class="p">()</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Make predictions</span>
+<span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">bm_interface</span><span class="o">.</span><span class="n">get_test_xy</span><span class="p">()</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
+<span class="c1"># Apply postprocessing bias mitigation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">aif360.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">BinaryLabelDataset</span>
+
+<span class="c1"># Convert predictions to BinaryLabelDataset format</span>
+<span class="n">test_pred_dataset</span> <span class="o">=</span> <span class="n">bm_interface</span><span class="o">.</span><span class="n">get_test_BLD</span><span class="p">()</span>
+<span class="n">test_pred_dataset</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">predictions</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">val_pred_dataset</span> <span class="o">=</span> <span class="n">bm_interface</span><span class="o">.</span><span class="n">get_val_BLD</span><span class="p">()</span>
+<span class="n">val_pred_dataset</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">bm_interface</span><span class="o">.</span><span class="n">get_val_xy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Apply Calibrated Equalized Odds postprocessing</span>
+<span class="n">mitigated_predictions</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">pos_CEO</span><span class="p">(</span>
+    <span class="n">valid_BLD_pred</span><span class="o">=</span><span class="n">val_pred_dataset</span><span class="p">,</span>
+    <span class="n">test_BLD_pred</span><span class="o">=</span><span class="n">test_pred_dataset</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="available-bias-mitigation-techniques">
+<h2>Available Bias Mitigation Techniques<a class="headerlink" href="#available-bias-mitigation-techniques" title="Link to this heading"></a></h2>
+<p>CallMeFair supports three categories of bias mitigation techniques:</p>
+<section id="preprocessing-techniques">
+<h3>Preprocessing Techniques<a class="headerlink" href="#preprocessing-techniques" title="Link to this heading"></a></h3>
+<p>Applied to training data before model training:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Reweighing</strong></p></td>
+<td><p>Assigns different weights to instances based on group membership</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Disparate Impact Remover (DIR)</strong></p></td>
+<td><p>Repairs training data to remove disparate impact</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Learning Fair Representations (LFR)</strong></p></td>
+<td><p>Learns fair representations that remove sensitive information</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply preprocessing techniques</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_Reweighing</span><span class="p">()</span>  <span class="c1"># Reweighing</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_DR</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">)</span>  <span class="c1"># Disparate Impact Remover</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_LFR</span><span class="p">()</span>         <span class="c1"># Learning Fair Representations</span>
+</pre></div>
+</div>
+</section>
+<section id="in-processing-techniques">
+<h3>In-processing Techniques<a class="headerlink" href="#in-processing-techniques" title="Link to this heading"></a></h3>
+<p>Applied during model training:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Adversarial Debiasing</strong></p></td>
+<td><p>Trains classifier with adversarial fairness constraint</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>MetaFair Classifier</strong></p></td>
+<td><p>Uses meta-learning for fair classification</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply in-processing techniques</span>
+<span class="n">ad_model</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">in_AD</span><span class="p">(</span><span class="n">debias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Adversarial Debiasing</span>
+<span class="n">meta_model</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">in_Meta</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># MetaFair</span>
+</pre></div>
+</div>
+</section>
+<section id="postprocessing-techniques">
+<h3>Postprocessing Techniques<a class="headerlink" href="#postprocessing-techniques" title="Link to this heading"></a></h3>
+<p>Applied to model predictions after training:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Calibrated Equalized Odds (CEO)</strong></p></td>
+<td><p>Adjusts predictions for equalized odds with calibration</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Equalized Odds (EO)</strong></p></td>
+<td><p>Adjusts predictions for equalized odds</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Reject Option Classification (ROC)</strong></p></td>
+<td><p>Rejects uncertain predictions to improve fairness</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply postprocessing techniques</span>
+<span class="n">mitigated_ceo</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">pos_CEO</span><span class="p">(</span><span class="n">valid_pred</span><span class="p">,</span> <span class="n">test_pred</span><span class="p">)</span>
+<span class="n">mitigated_eo</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">pos_EO</span><span class="p">(</span><span class="n">valid_pred</span><span class="p">,</span> <span class="n">test_pred</span><span class="p">)</span>
+<span class="n">mitigated_roc</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">pos_ROC</span><span class="p">(</span><span class="n">valid_pred</span><span class="p">,</span> <span class="n">test_pred</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="evaluation-and-metrics">
+<h2>Evaluation and Metrics<a class="headerlink" href="#evaluation-and-metrics" title="Link to this heading"></a></h2>
+<p>CallMeFair provides comprehensive evaluation tools:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.util.fair_util</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMMetrics</span>
+
+<span class="c1"># Create metrics evaluator</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">BMMetrics</span><span class="p">(</span>
+    <span class="n">bmI</span><span class="o">=</span><span class="n">bm_interface</span><span class="p">,</span>
+    <span class="n">class_array</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>  <span class="c1"># Class labels</span>
+    <span class="n">pred_val</span><span class="o">=</span><span class="n">val_pred_dataset</span><span class="p">,</span>
+    <span class="n">pred_test</span><span class="o">=</span><span class="n">test_pred_dataset</span><span class="p">,</span>
+    <span class="n">privileged_group</span><span class="o">=</span><span class="n">privileged_groups</span><span class="p">,</span>
+    <span class="n">unprivileged_group</span><span class="o">=</span><span class="n">unprivileged_groups</span>
+<span class="p">)</span>
+
+<span class="c1"># Get comprehensive fairness report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fairness Report:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Statistical Parity Difference: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;spd&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Equalized Odds Difference: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;eq_opp_diff&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average Odds Difference: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;avg_odd_diff&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Disparate Impact: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;disparate_impact&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Theil Index: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;theil_idx&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get overall fairness score</span>
+<span class="n">score_dict</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get_score</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overall Fairness Score: </span><span class="si">{</span><span class="n">score_dict</span><span class="p">[</span><span class="s1">&#39;overall_score&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Is Fair: </span><span class="si">{</span><span class="n">score_dict</span><span class="p">[</span><span class="s1">&#39;is_fair&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="fairness-score-calculation">
+<h3>Fairness Score Calculation<a class="headerlink" href="#fairness-score-calculation" title="Link to this heading"></a></h3>
+<p>The <cite>calculate_fairness_score</cite> function aggregates multiple fairness metrics:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.util.fair_util</span><span class="w"> </span><span class="kn">import</span> <span class="n">calculate_fairness_score</span>
+
+<span class="c1"># Calculate fairness score from individual metrics</span>
+<span class="n">fairness_result</span> <span class="o">=</span> <span class="n">calculate_fairness_score</span><span class="p">(</span>
+    <span class="n">EOD</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>    <span class="c1"># Equal Opportunity Difference</span>
+    <span class="n">AOD</span><span class="o">=</span><span class="mf">0.03</span><span class="p">,</span>    <span class="c1"># Average Odds Difference</span>
+    <span class="n">SPD</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span>    <span class="c1"># Statistical Parity Difference</span>
+    <span class="n">DI</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>     <span class="c1"># Disparate Impact</span>
+    <span class="n">TI</span><span class="o">=</span><span class="mf">0.12</span>      <span class="c1"># Theil Index</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overall fairness score: </span><span class="si">{</span><span class="n">fairness_result</span><span class="p">[</span><span class="s1">&#39;overall_score&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Is fair: </span><span class="si">{</span><span class="n">fairness_result</span><span class="p">[</span><span class="s1">&#39;is_fair&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check individual metric evaluations</span>
+<span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">is_acceptable</span> <span class="ow">in</span> <span class="n">fairness_result</span><span class="p">[</span><span class="s1">&#39;metric_evaluations&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;✓&quot;</span> <span class="k">if</span> <span class="n">is_acceptable</span> <span class="k">else</span> <span class="s2">&quot;✗&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced-usage">
+<h2>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Link to this heading"></a></h2>
+<section id="bias-search-and-evaluation">
+<h3>Bias Search and Evaluation<a class="headerlink" href="#bias-search-and-evaluation" title="Link to this heading"></a></h3>
+<p>CallMeFair provides comprehensive bias search functionality to identify and evaluate
+bias in your datasets and models:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search.fair_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiasSearch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Initialize bias search with multiple sensitive attributes</span>
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">BiasSearch</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">])</span>
+
+<span class="c1"># Evaluate individual attributes</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_average</span><span class="p">(</span><span class="n">iterate</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Individual Attribute Bias:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+
+<span class="c1"># Evaluate attribute combinations (2-way and 3-way)</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_combinations</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Attribute Combination Bias:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+
+<span class="c1"># Compare different set operations between attributes</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_combination_average</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Set Operation Comparison:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="grid-search-for-bias-mitigation-combinations">
+<h3>Grid Search for Bias Mitigation Combinations<a class="headerlink" href="#grid-search-for-bias-mitigation-combinations" title="Link to this heading"></a></h3>
+<p>CallMeFair provides a comprehensive grid search framework for systematically
+evaluating different combinations of bias mitigation techniques:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.mitigation.fair_grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMGridSearch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.mitigation.fair_bm</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+
+<span class="c1"># Define bias mitigation combinations to test</span>
+<span class="n">bm_combinations</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="n">BMType</span><span class="o">.</span><span class="n">preReweighing</span><span class="p">],</span>  <span class="c1"># Only preprocessing</span>
+    <span class="p">[</span><span class="n">BMType</span><span class="o">.</span><span class="n">preDisparate</span><span class="p">],</span>   <span class="c1"># Only disparate impact remover</span>
+    <span class="p">[</span><span class="n">BMType</span><span class="o">.</span><span class="n">preReweighing</span><span class="p">,</span> <span class="n">BMType</span><span class="o">.</span><span class="n">posCEO</span><span class="p">],</span>  <span class="c1"># Preprocessing + postprocessing</span>
+    <span class="p">[</span><span class="n">BMType</span><span class="o">.</span><span class="n">inAdversarial</span><span class="p">],</span>  <span class="c1"># Only in-processing</span>
+    <span class="p">[</span><span class="n">BMType</span><span class="o">.</span><span class="n">preLFR</span><span class="p">,</span> <span class="n">BMType</span><span class="o">.</span><span class="n">posEO</span><span class="p">]</span>  <span class="c1"># Complex combination</span>
+<span class="p">]</span>
+
+<span class="c1"># Initialize grid search</span>
+<span class="n">grid_search</span> <span class="o">=</span> <span class="n">BMGridSearch</span><span class="p">(</span>
+    <span class="n">bmI</span><span class="o">=</span><span class="n">bm_interface</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">RandomForestClassifier</span><span class="p">(),</span>
+    <span class="n">bm_list</span><span class="o">=</span><span class="n">bm_combinations</span><span class="p">,</span>
+    <span class="n">privileged_group</span><span class="o">=</span><span class="n">privileged_groups</span><span class="p">,</span>
+    <span class="n">unprivileged_group</span><span class="o">=</span><span class="n">unprivileged_groups</span>
+<span class="p">)</span>
+
+<span class="c1"># Run comprehensive evaluation</span>
+<span class="n">grid_search</span><span class="o">.</span><span class="n">run_single_sensitive</span><span class="p">()</span>
+<span class="c1"># Results are automatically logged to CSV files</span>
+</pre></div>
+</div>
+</section>
+<section id="combining-multiple-techniques">
+<h3>Combining Multiple Techniques<a class="headerlink" href="#combining-multiple-techniques" title="Link to this heading"></a></h3>
+<p>You can combine different bias mitigation techniques manually:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply preprocessing</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_Reweighing</span><span class="p">()</span>
+
+<span class="c1"># Train model with in-processing</span>
+<span class="n">ad_model</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">in_AD</span><span class="p">(</span><span class="n">debias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ad_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+<span class="c1"># Apply postprocessing</span>
+<span class="n">mitigated_predictions</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">pos_CEO</span><span class="p">(</span><span class="n">valid_pred</span><span class="p">,</span> <span class="n">test_pred</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-evaluation">
+<h3>Custom Evaluation<a class="headerlink" href="#custom-evaluation" title="Link to this heading"></a></h3>
+<p>Create custom evaluation scenarios:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Evaluate before bias mitigation</span>
+<span class="n">original_metrics</span> <span class="o">=</span> <span class="n">BMMetrics</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">original_report</span> <span class="o">=</span> <span class="n">original_metrics</span><span class="o">.</span><span class="n">get_report</span><span class="p">()</span>
+
+<span class="c1"># Apply bias mitigation</span>
+<span class="n">bm_manager</span><span class="o">.</span><span class="n">pre_Reweighing</span><span class="p">()</span>
+
+<span class="c1"># Evaluate after bias mitigation</span>
+<span class="n">mitigated_metrics</span> <span class="o">=</span> <span class="n">BMMetrics</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="n">mitigated_report</span> <span class="o">=</span> <span class="n">mitigated_metrics</span><span class="o">.</span><span class="n">get_report</span><span class="p">()</span>
+
+<span class="c1"># Compare results</span>
+<span class="n">improvement</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;SPD&#39;</span><span class="p">:</span> <span class="n">original_report</span><span class="p">[</span><span class="s1">&#39;SPD&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mitigated_report</span><span class="p">[</span><span class="s1">&#39;SPD&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;EOD&#39;</span><span class="p">:</span> <span class="n">original_report</span><span class="p">[</span><span class="s1">&#39;EOD&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mitigated_report</span><span class="p">[</span><span class="s1">&#39;EOD&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;AOD&#39;</span><span class="p">:</span> <span class="n">original_report</span><span class="p">[</span><span class="s1">&#39;AOD&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mitigated_report</span><span class="p">[</span><span class="s1">&#39;AOD&#39;</span><span class="p">]</span>
+<span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Improvement in fairness metrics:&quot;</span><span class="p">,</span> <span class="n">improvement</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Data Preparation</strong>
+- Ensure your data is properly split into train/validation/test sets
+- Identify all protected attributes in your dataset
+- Handle missing values appropriately</p></li>
+<li><p><strong>Group Definition</strong>
+- Clearly define privileged and unprivileged groups
+- Consider intersectional fairness (multiple protected attributes)
+- Document your group definitions for reproducibility</p></li>
+<li><p><strong>Technique Selection</strong>
+- Start with preprocessing techniques for simplicity
+- Use in-processing for better performance when possible
+- Apply postprocessing as a final fairness adjustment</p></li>
+<li><p><strong>Evaluation</strong>
+- Always evaluate both accuracy and fairness metrics
+- Use multiple fairness metrics for comprehensive assessment
+- Consider the trade-off between accuracy and fairness</p></li>
+<li><p><strong>Validation</strong>
+- Use cross-validation for robust evaluation
+- Test on multiple datasets when possible
+- Document your experimental setup</p></li>
+</ol>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-issues-and-solutions">
+<h3>Common Issues and Solutions<a class="headerlink" href="#common-issues-and-solutions" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt><strong>Import Errors</strong></dt><dd><ul class="simple">
+<li><p>Ensure all dependencies are installed: <cite>pip install -r requirements.txt</cite></p></li>
+<li><p>Check Python version compatibility (3.8+)</p></li>
+</ul>
+</dd>
+<dt><strong>Data Format Issues</strong></dt><dd><ul class="simple">
+<li><p>Ensure your DataFrame has the correct column names</p></li>
+<li><p>Verify that protected attributes are properly encoded</p></li>
+<li><p>Check that target variable is binary (0/1)</p></li>
+</ul>
+</dd>
+<dt><strong>Memory Issues</strong></dt><dd><ul class="simple">
+<li><p>Use smaller batch sizes for large datasets</p></li>
+<li><p>Consider data sampling for initial experimentation</p></li>
+<li><p>Use efficient data structures (numpy arrays instead of lists)</p></li>
+</ul>
+</dd>
+<dt><strong>Fairness Metrics</strong></dt><dd><ul class="simple">
+<li><p>Ensure groups are properly defined</p></li>
+<li><p>Check for sufficient samples in each group</p></li>
+<li><p>Verify that predictions are in the correct format</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<p>Now that you’ve completed the quick start guide, you can:</p>
+<ol class="arabic simple">
+<li><p><strong>Explore the API Reference</strong>: Learn about all available classes and methods</p></li>
+<li><p><strong>Read the Theory Guide</strong>: Understand the mathematical foundations</p></li>
+<li><p><strong>Try the Examples</strong>: Work through comprehensive examples</p></li>
+<li><p><strong>Contribute</strong>: Help improve the framework</p></li>
+</ol>
+<p>For more advanced usage, see the <span class="xref std std-doc">../user_guide/bias_mitigation_guide</span> and <span class="xref std std-doc">../user_guide/evaluation_guide</span>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="CallMeFair Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="grid_search_guide.html" class="btn btn-neutral float-right" title="Grid Search Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, AI2Lab Team - University of Calgary.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

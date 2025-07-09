@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "callmefair"
+version = "0.0.1"
+authors = [
+  { name="Pedro Paiva", email="pedro.paiva1@ucalgary.ca" },
+]
+description = "A comprehensive framework for automatic bias mitigation in AI systems"
+readme = "README.md"
+requires-python = ">=3.11"
+dependecies = [
+    'scikit-learn',
+    'matplotlib',
+    'seaborn',
+    'pandas',
+    'numpy',
+    'aif360[Reductions, inFairness]',
+    'xgboost',
+    'catboost',
+    'BlackBoxAuditing',
+    'imblearn',
+    'tqdm',
+    'prettytable',
+    'tensorflow',
+    'shapely',
+    'pytorch-tabnet'
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/uofc-ai2lab/callmefair/"
+Issues = "https://github.com/uofc-ai2lab/callmefair/issues"

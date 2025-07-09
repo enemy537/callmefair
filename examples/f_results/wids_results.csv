@@ -1,0 +1,15 @@
+Model,Bias Mitigation,Accuracy,F
+TabNetClassifier,baseline,0.8176,0.348
+TabNetClassifier,preRW preROC,0.8176,0.348
+XGBClassifier,baseline,0.8108,0.382
+XGBClassifier,preDIR,0.8124,0.355
+catboost,baseline,0.817,0.354
+catboost,preDIR preROC,0.8186,0.347
+MLPClassifier,baseline,0.815,0.358
+MLPClassifier,preDIR preROC,0.8155,0.353
+LogisticRegression,baseline,0.8025,0.441
+LogisticRegression,preRW,0.8051,0.159
+LogisticRegression,preDIR,0.8025,0.843
+Adversarial,baseline,0.8072,1
+Adversarial,preRW,0.8035,0.377
+Adversarial,preRW preROC,0.803,0.406

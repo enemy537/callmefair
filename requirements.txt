@@ -1,0 +1,15 @@
+scikit-learn
+matplotlib
+seaborn
+pandas
+numpy
+aif360[Reductions, inFairness]
+xgboost
+catboost
+BlackBoxAuditing
+imblearn
+tqdm
+prettytable
+tensorflow
+shapely
+pytorch-tabnet

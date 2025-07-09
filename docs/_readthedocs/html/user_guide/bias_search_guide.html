@@ -1,0 +1,456 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bias Search Guide &mdash; CallMeFair 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Utility Functions Guide" href="utility_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            CallMeFair
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="grid_search_guide.html">Grid Search Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utility_guide.html">Utility Functions Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Bias Search Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-classes">Core Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basesearch">BaseSearch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#biassearch">BiasSearch</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#attribute-combination-operations">Attribute Combination Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#union-or">Union (OR)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intersection-and">Intersection (AND)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#set-differences">Set Differences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#symmetric-difference-xor">Symmetric Difference (XOR)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#supported-models">Supported Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#logistic-regression">Logistic Regression</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#catboost">CatBoost</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#xgboost">XGBoost</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-layer-perceptron">Multi-layer Perceptron</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#usage-examples">Usage Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#individual-attribute-evaluation">Individual Attribute Evaluation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#attribute-combinations">Attribute Combinations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#set-operation-comparison">Set Operation Comparison</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-usage">Advanced Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#custom-dataset-preparation">Custom Dataset Preparation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#handling-class-imbalance">Handling Class Imbalance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parallel-processing">Parallel Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#output-interpretation">Output Interpretation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fairness-scores">Fairness Scores</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#result-tables">Result Tables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-issues">Common Issues</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#performance-tips">Performance Tips</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#integration-with-other-modules">Integration with Other Modules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CallMeFair</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Bias Search Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/user_guide/bias_search_guide.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bias-search-guide">
+<h1>Bias Search Guide<a class="headerlink" href="#bias-search-guide" title="Link to this heading"></a></h1>
+<p>The bias search functionality in CallMeFair provides comprehensive tools for evaluating bias in machine learning models with respect to sensitive attributes. This guide covers the core search modules and their usage.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The bias search framework consists of two main modules:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_search_base.py</span></code>: Core functionality for bias evaluation and model training</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fair_search.py</span></code>: High-level interface for comprehensive bias analysis</p></li>
+</ul>
+<p>The framework supports:</p>
+<ul class="simple">
+<li><p>Individual attribute bias evaluation</p></li>
+<li><p>Attribute combination analysis (2-way and 3-way combinations)</p></li>
+<li><p>Multiple set operations (union, intersection, differences)</p></li>
+<li><p>Various ML models (Logistic Regression, CatBoost, XGBoost, MLP)</p></li>
+<li><p>Parallel processing for efficient evaluation</p></li>
+<li><p>Pretty table output for results</p></li>
+</ul>
+</section>
+<section id="core-classes">
+<h2>Core Classes<a class="headerlink" href="#core-classes" title="Link to this heading"></a></h2>
+<section id="basesearch">
+<h3>BaseSearch<a class="headerlink" href="#basesearch" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">BaseSearch</span></code> class provides the foundation for bias evaluation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search._search_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSearch</span>
+
+<span class="c1"># Initialize with dataset and target variable</span>
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">BaseSearch</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">)</span>
+
+<span class="c1"># Evaluate bias for a specific attribute</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">iterate</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Key Methods:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluate_attribute()</span></code>: Evaluate bias for a single attribute</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__pre_attribute_bias()</span></code>: Prepare datasets for evaluation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__predict_attribute_bias()</span></code>: Compute fairness metrics</p></li>
+</ul>
+</section>
+<section id="biassearch">
+<h3>BiasSearch<a class="headerlink" href="#biassearch" title="Link to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">BiasSearch</span></code> class extends BaseSearch with comprehensive analysis capabilities:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search.fair_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiasSearch</span>
+
+<span class="c1"># Initialize with multiple attributes</span>
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">BiasSearch</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">])</span>
+
+<span class="c1"># Evaluate individual attributes</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_average</span><span class="p">()</span>
+
+<span class="c1"># Evaluate attribute combinations</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_combinations</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Key Methods:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluate_average()</span></code>: Evaluate all individual attributes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluate_combinations()</span></code>: Evaluate 2-way and 3-way combinations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluate_combination_average()</span></code>: Compare different set operations</p></li>
+</ul>
+</section>
+</section>
+<section id="attribute-combination-operations">
+<h2>Attribute Combination Operations<a class="headerlink" href="#attribute-combination-operations" title="Link to this heading"></a></h2>
+<p>The framework supports various set operations for combining sensitive attributes:</p>
+<section id="union-or">
+<h3>Union (OR)<a class="headerlink" href="#union-or" title="Link to this heading"></a></h3>
+<p>Combines attributes using logical OR operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search._search_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">CType</span><span class="p">,</span> <span class="n">combine_attributes</span>
+
+<span class="c1"># gender OR race (either attribute is 1)</span>
+<span class="n">result_df</span> <span class="o">=</span> <span class="n">combine_attributes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="n">CType</span><span class="o">.</span><span class="n">union</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="intersection-and">
+<h3>Intersection (AND)<a class="headerlink" href="#intersection-and" title="Link to this heading"></a></h3>
+<p>Combines attributes using logical AND operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># gender AND race (both attributes are 1)</span>
+<span class="n">result_df</span> <span class="o">=</span> <span class="n">combine_attributes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="n">CType</span><span class="o">.</span><span class="n">intersection</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="set-differences">
+<h3>Set Differences<a class="headerlink" href="#set-differences" title="Link to this heading"></a></h3>
+<p>Computes set differences between attributes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># gender - race (gender=1 AND race=0)</span>
+<span class="n">result_df</span> <span class="o">=</span> <span class="n">combine_attributes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="n">CType</span><span class="o">.</span><span class="n">difference_1_minus_2</span><span class="p">)</span>
+
+<span class="c1"># race - gender (race=1 AND gender=0)</span>
+<span class="n">result_df</span> <span class="o">=</span> <span class="n">combine_attributes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="n">CType</span><span class="o">.</span><span class="n">difference_2_minus_1</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="symmetric-difference-xor">
+<h3>Symmetric Difference (XOR)<a class="headerlink" href="#symmetric-difference-xor" title="Link to this heading"></a></h3>
+<p>Combines attributes using XOR operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># gender XOR race (exactly one attribute is 1)</span>
+<span class="n">result_df</span> <span class="o">=</span> <span class="n">combine_attributes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="n">CType</span><span class="o">.</span><span class="n">symmetric_difference</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="supported-models">
+<h2>Supported Models<a class="headerlink" href="#supported-models" title="Link to this heading"></a></h2>
+<p>The framework supports multiple machine learning models:</p>
+<section id="logistic-regression">
+<h3>Logistic Regression<a class="headerlink" href="#logistic-regression" title="Link to this heading"></a></h3>
+<p>Fast and interpretable model for bias evaluation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="catboost">
+<h3>CatBoost<a class="headerlink" href="#catboost" title="Link to this heading"></a></h3>
+<p>Gradient boosting model with optimized parameters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="xgboost">
+<h3>XGBoost<a class="headerlink" href="#xgboost" title="Link to this heading"></a></h3>
+<p>Advanced gradient boosting with balanced parameters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;xgb&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="multi-layer-perceptron">
+<h3>Multi-layer Perceptron<a class="headerlink" href="#multi-layer-perceptron" title="Link to this heading"></a></h3>
+<p>Neural network with adaptive learning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;mlp&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="usage-examples">
+<h2>Usage Examples<a class="headerlink" href="#usage-examples" title="Link to this heading"></a></h2>
+<section id="individual-attribute-evaluation">
+<h3>Individual Attribute Evaluation<a class="headerlink" href="#individual-attribute-evaluation" title="Link to this heading"></a></h3>
+<p>Evaluate bias for individual sensitive attributes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search.fair_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiasSearch</span>
+
+<span class="c1"># Initialize searcher</span>
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">BiasSearch</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">])</span>
+
+<span class="c1"># Evaluate all attributes</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_average</span><span class="p">(</span><span class="n">iterate</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="attribute-combinations">
+<h3>Attribute Combinations<a class="headerlink" href="#attribute-combinations" title="Link to this heading"></a></h3>
+<p>Evaluate bias for attribute combinations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Evaluate 2-way and 3-way combinations</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_combinations</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="set-operation-comparison">
+<h3>Set Operation Comparison<a class="headerlink" href="#set-operation-comparison" title="Link to this heading"></a></h3>
+<p>Compare different ways of combining attributes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compare all set operations between gender and race</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_combination_average</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">printable</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced-usage">
+<h2>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Link to this heading"></a></h2>
+<section id="custom-dataset-preparation">
+<h3>Custom Dataset Preparation<a class="headerlink" href="#custom-dataset-preparation" title="Link to this heading"></a></h3>
+<p>Use custom datasets for evaluation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use modified dataset</span>
+<span class="n">modified_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">modified_df</span><span class="p">[</span><span class="s1">&#39;new_feature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">some_transformation</span><span class="p">(</span><span class="n">modified_df</span><span class="p">)</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">df_new</span><span class="o">=</span><span class="n">modified_df</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="handling-class-imbalance">
+<h3>Handling Class Imbalance<a class="headerlink" href="#handling-class-imbalance" title="Link to this heading"></a></h3>
+<p>Apply NearMiss undersampling for imbalanced datasets:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply class balancing</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">treat_umbalance</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="parallel-processing">
+<h3>Parallel Processing<a class="headerlink" href="#parallel-processing" title="Link to this heading"></a></h3>
+<p>The framework automatically uses parallel processing for certain models:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Logistic Regression and MLP use multiprocessing</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>  <span class="c1"># Parallel</span>
+
+<span class="c1"># CatBoost and XGBoost use sequential processing</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span>  <span class="c1"># Sequential</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="output-interpretation">
+<h2>Output Interpretation<a class="headerlink" href="#output-interpretation" title="Link to this heading"></a></h2>
+<section id="fairness-scores">
+<h3>Fairness Scores<a class="headerlink" href="#fairness-scores" title="Link to this heading"></a></h3>
+<p>The framework computes two types of fairness scores:</p>
+<ul class="simple">
+<li><p><strong>Raw Score</strong>: Direct fairness metric value</p></li>
+<li><p><strong>Overall Score</strong>: Normalized fairness score (0-1 scale)</p></li>
+</ul>
+<p>Higher scores indicate better fairness (less bias).</p>
+</section>
+<section id="result-tables">
+<h3>Result Tables<a class="headerlink" href="#result-tables" title="Link to this heading"></a></h3>
+<p>Results are presented in pretty tables with columns:</p>
+<ul class="simple">
+<li><p><strong>Attribute</strong>: Name of the sensitive attribute or combination</p></li>
+<li><p><strong>Raw Fairness Score</strong>: Direct fairness metric value</p></li>
+<li><p><strong>Normalized Fairness Score</strong>: Normalized score (0-1)</p></li>
+</ul>
+<p>Example Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>+----------+---------------------+------------------------+
+| Attribute| Raw Fairness Score | Normalized Fairness   |
+|          |                    | score                 |
++----------+---------------------+------------------------+
+| gender   | 0.85               | 0.92                  |
+| race     | 0.72               | 0.78                  |
+| age      | 0.91               | 0.95                  |
++----------+---------------------+------------------------+
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Multiple Iterations</strong>: Use at least 5-10 iterations for robust results</p></li>
+<li><p><strong>Model Selection</strong>: Start with Logistic Regression for interpretability</p></li>
+<li><p><strong>Attribute Combinations</strong>: Use intersection for most meaningful combinations</p></li>
+<li><p><strong>Class Balancing</strong>: Apply NearMiss for highly imbalanced datasets</p></li>
+<li><p><strong>Parallel Processing</strong>: Use ‘lr’ or ‘mlp’ models for faster processing</p></li>
+</ol>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-issues">
+<h3>Common Issues<a class="headerlink" href="#common-issues" title="Link to this heading"></a></h3>
+<p><strong>Binary Attributes Required</strong>: All sensitive attributes must be binary (0 or 1)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Convert categorical to binary</span>
+<span class="n">df</span><span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;male&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Memory Issues</strong>: Reduce iterations or use smaller datasets</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use fewer iterations</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">iterate</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Slow Performance</strong>: Use parallel models or reduce dataset size</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Use Logistic Regression for speed</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_attribute</span><span class="p">(</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="performance-tips">
+<h3>Performance Tips<a class="headerlink" href="#performance-tips" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Use Logistic Regression for quick prototyping</p></li>
+<li><p>Apply class balancing only when necessary</p></li>
+<li><p>Use parallel processing for large datasets</p></li>
+<li><p>Consider feature scaling for better model performance</p></li>
+<li><p>Cache results for repeated evaluations</p></li>
+</ol>
+</section>
+</section>
+<section id="integration-with-other-modules">
+<h2>Integration with Other Modules<a class="headerlink" href="#integration-with-other-modules" title="Link to this heading"></a></h2>
+<p>The bias search functionality integrates with other CallMeFair modules:</p>
+<ul class="simple">
+<li><p><strong>Bias Mitigation</strong>: Use search results to identify which attributes need mitigation</p></li>
+<li><p><strong>Grid Search</strong>: Combine with bias mitigation techniques</p></li>
+<li><p><strong>Utilities</strong>: Use fairness score calculation from fair_util</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.search.fair_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiasSearch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">callmefair.bm</span><span class="w"> </span><span class="kn">import</span> <span class="n">BMManager</span>
+
+<span class="c1"># Identify bias</span>
+<span class="n">searcher</span> <span class="o">=</span> <span class="n">BiasSearch</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;gender&#39;</span><span class="p">,</span> <span class="s1">&#39;race&#39;</span><span class="p">])</span>
+<span class="n">table</span><span class="p">,</span> <span class="n">printable</span> <span class="o">=</span> <span class="n">searcher</span><span class="o">.</span><span class="n">evaluate_average</span><span class="p">()</span>
+
+<span class="c1"># Apply mitigation</span>
+<span class="n">bm_manager</span> <span class="o">=</span> <span class="n">BMManager</span><span class="p">()</span>
+<span class="n">mitigated_df</span> <span class="o">=</span> <span class="n">bm_manager</span><span class="o">.</span><span class="n">apply_mitigation</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;reweighing&#39;</span><span class="p">,</span> <span class="s1">&#39;gender&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="utility_guide.html" class="btn btn-neutral float-left" title="Utility Functions Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, AI2Lab Team - University of Calgary.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
