@@ -1,16 +1,12 @@
 <div align="center">   
-
-### Instruction: Mandatory Field (*), Optional Field()
   
   
-# Write Your Project Title*
+# FairHealthGrid: A Systematic Framework for Evaluating Bias Mitigation Strategies in Healthcare Machine Learning
 </div>
 
 <h3 align="center">
-  <a href="https://arxiv.org/abs/2212.10156">Paper Link*</a> |
-  <a href="https://www.youtube.com/watch?v=cyrxJJ_nnaQ">Video</a> |
-  <a href="sources/cvpr23_uniad_poster.png">Poster</a> |
-  <a href="https://opendrivelab.com/e2ead/UniAD_plenary_talk_slides.pdf">Slides</a>
+  <a href="https://aisel.aisnet.org/amcis2025/intelfuture/intelfuture/46/">Paper Link*</a> |
+  <a href="">Slides (soon)</a>
 </h3>
 
 <br><br>
@@ -26,48 +22,67 @@
 7. [Related Resources](#resources)
 
 ## Overview* <a name="overview"></a>
-In the "Overview" section of a project or research paper, briefly summarize the main goals, methods, and significance of the work. It should provide a clear context, explaining what the project or research aims to achieve. Keep it concise, avoiding technical jargon, while highlighting the novelty or impacts and results of the work.
+The integration of machine learning (ML) into healthcare demands rigorous fairness assurance to prevent algorithmic biases from exacerbating disparities in treatment. This study introduces FairHealthGrid, a systematic framework for evaluating bias mitigation strategies across healthcare ML models. Our framework combines grid search with a composite fairness score, incorporating fairness metrics weighted by risk tolerances. As output, we present a trade-off map concurrently evaluating accuracy and fairness, categorizing solutions (model + bias mitigation) into the following regions: Win-Win, Good, Poor, Inverted, or Lose-Lose. We apply the framework on three different healthcare datasets. Results reveal significant variability across different healthcare applications. The framework identifies model-bias mitigation for balancing equity and accuracy, yet highlights the absence of universal solutions. By enabling systematic trade-off analysis, FairHealthGrid allows healthcare stakeholders to audit, compare, and select ethically aligned ML models for specific healthcare applications—advancing towards equitable AI in healthcare.
 
 ## News <a name="news"></a>
-Write about any changes or updates such as paper tile change, planning metric, bugfix, new features, awards, etc. to the repository.\
-Eaxmple: - **`2024/10/10`** Paper available on arXiv.
+**`2025/1/6`** Our paper got accepted on AMCIS 2025.
 
 ## Getting Started* <a name="start"></a>
-In the Get Started section of a GitHub project or research paper, provide clear instructions for users to set up and use your code. Also, mention the dataset source, any specific framework or libraries requirements, etc.
+To install and use FairHealthGrid, follow these steps:
 
-## Results* <a name="results"></a>
-In the Results section of a project or research paper on GitHub, you should provide a clear and concise summary of the outcomes or findings. Here's a brief instruction:
+### 1. Installation
 
-Key Findings: main outcomes, metrics, insights. Use figures, charts, or tables.\
-Performance Evaluation: Any performance metrics and compare with baselines or benchmarks if applicable.\
-Reproducibility: Include links to data or code to reproduce results, if possible.
+You can install the package directly from PyPI:
+```bash
+pip install callmefair
+```
 
-Make sure to keep it succinct and focus on the most relevant information.
+### 2. Documentation
 
-| Method | Sensitivity | Specificity | Accuracy | mAP | Dice |
-| :---: | :---: | :---: | :---: | :---:|:---:| 
-| XXXXXX | 0.455 | 0.390 | 0.297 | 0.454 | 0.674 |
+For detailed documentation and usage examples, visit: [CallMeFair Documentation](https://callmefair.readthedocs.io/en/latest/)
 
-<p align="left">
-  <img src="figure.png" alt="Figure" width="500"/>
-  <br>
-  <em>Figure 1: Please add necessary figures</em>
-</p>
+## Results <a name="results"></a>
+
+### Key Findings
+
+Our evaluation across three healthcare datasets reveals that **preprocessing and in-processing strategies offer the best balance between fairness and accuracy**, while multi-stage bias mitigation approaches risk over-correction. The framework demonstrates significant variability in bias mitigation effectiveness across different healthcare applications, highlighting the absence of universal solutions.
+
+### Main Contributions
+
+We introduce **FairHealthGrid**, a comprehensive framework that addresses critical gaps in healthcare AI fairness evaluation:
+
+1. **Systematic Evaluation Framework**: Exhaustive grid search optimization for model-strategy combinations in healthcare AI
+2. **Unified Fairness Score (𝓕)**: Integrates five fairness metrics with risk tolerances for comprehensive bias assessment
+3. **Interpretable Trade-off Maps**: Context-driven model selection through fairness-accuracy visualization
+
+### Framework Benefits
+
+- **Model-agnostic design** enabling evaluation across diverse ML architectures
+- **Context-specific evaluations** prioritizing datasets with sensitive attributes
+- **Actionable insights** for clinical deployment decisions
+- **Systematic methodology** for selecting appropriate bias mitigation strategies
+
+### Limitations & Future Work
+
+Current evaluations focus on single protected attributes. Future research will address intersectional bias from interacting sensitive features, expand to new data modalities, and formalize a comprehensive bias taxonomy using causal fairness frameworks.
 
 
-## Citation* <a name="citation"></a>
+![Pipeline](figures/pipeline.png)
+
+*Figure 1: Proposed approach consists of three main stages: (A) Grid Search, where multiple machine learning models (ML) and bias mitigation (BM) strategies are evaluated; (B) Computation of the Combined Fairness Score (𝓕), aggregating multiple fairness measures to quantify bias; and (C) Fairness Trade-off Mapping, which utilizes the baseline fairness score 𝓕baseline and naive mutation strategies (𝓕10–𝓕100) to generate a trade-off curve. The final trade-off map categorizes models into trade-off regions.*
+
+
+## Citation <a name="citation"></a>
 
 If you find our project useful for your research, please consider citing our paper and codebase with the following BibTeX:
 
 ```bibtex
-@article{bento2022deep,
-  title={Deep learning in large and multi-site structural brain MR imaging datasets},
-  author={Bento, Mariana and Fantini, Irene and Park, Justin and Rittner, Leticia and Frayne, Richard},
-  journal={Frontiers in Neuroinformatics},
-  volume={15},
-  pages={805669},
-  year={2022},
-  publisher={Frontiers Media SA}
+@proceedings{bento2022deep,
+  title={FairHealthGrid: A Systematic Framework for Evaluating Bias Mitigation Strategies in Healthcare Machine Learning},
+  author={Paiva, Pedro and Dehghani, Farzaneh and Anzum, Fahim and Singhal, Mansi and Metwali, Ayah and Gavrilova, Marina and Bento, Mariana},
+  year={2025},
+  journal={31st Americas Conference on Information Systems, {AMCIS} 2025},
+  publisher = {Association for Information Systems},
 }
 ```
 
@@ -76,5 +91,4 @@ In the License section of your GitHub project or research paper, include the typ
 
 ## Related Resources <a name="resources"></a>
 - [Related Literature](https://www.frontiersin.org/journals/computational-neuroscience/articles/10.3389/fncom.2024.1434421/full) (ai2lab)
-- [Book Link](https://www.amazon.ca/Hands-Machine-Learning-Scikit-Learn-TensorFlow/dp/1098125975/ref=asc_df_1098125975/?gad_source=1&hvadid=706745562943&hvdev=c&hvdvcmdl&hvlocint&hvlocphy=9001320&hvnetw=g&hvpone&hvpos&hvptwo&hvqmt&hvrand=18226388509454359838&hvtargid=pla-1651497364252&linkCode=df0&mcid=7e8ca6f4dddf3bd783d530f456a83b68&psc=1&tag=googleshopc0c-20)
 - [Web Content](https://d2l.ai/)
