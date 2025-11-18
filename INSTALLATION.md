@@ -15,7 +15,7 @@ pip install callmefair
 For full functionality including all bias mitigation algorithms and visualization tools:
 
 ```bash
-pip install callmefair[all]
+pip install callmefair
 ```
 
 ### Development Installation

@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../")
+sys.path.append("../../")
 from collections import defaultdict
 from callmefair.util.fair_util import calculate_fairness_score
 import numpy as np
@@ -22,7 +22,7 @@ def get_classifier(name):
         clf (classifer) -- Classifier with default configuration from scipy
     """
     if name == "lr":
-        clf = LogisticRegression()
+        clf = LogisticRegression(max_iter=200, solver="saga")
     elif name == "dt":
         clf = tree.DecisionTreeClassifier()
     elif name == "svm":
@@ -32,15 +32,12 @@ def get_classifier(name):
     elif name == "tabular":
         clf = TabNetClassifier(seed=42)
     elif name == "cat":
-        clf = CatBoostClassifier(eval_metric='Accuracy',
-                depth =  4,
-                learning_rate = 0.01, thread_count=-1,
-                iterations = 10, verbose=False)
+        clf = CatBoostClassifier(iterations=300, learning_rate=0.1, depth=6, thread_count=-1)
     return clf
 
 
 def create_baseline(clf_name,dataset_orig, privileged_groups,unprivileged_groups,
-                    data_splits=50,repetitions=50,odds={"0":[1,0],"1":[0,1]},options = [0,1],
+                    data_splits=20,repetitions=20,odds={"0":[1,0],"1":[0,1]},options = [0,1],
                    degrees = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],verbose=False):
     """ Create a baseline by mutating predictions of an original classification model (clf_name).
 
@@ -105,20 +102,24 @@ def create_baseline(clf_name,dataset_orig, privileged_groups,unprivileged_groups
                     dataset_orig_test_pred.labels = changed
                     class_metric = ClassificationMetric(dataset_orig_test, dataset_orig_test_pred,
                                      unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
-                    stat = abs(class_metric.statistical_parity_difference())
-                    aod = abs(class_metric.average_abs_odds_difference())
-                    eod = abs(class_metric.equal_opportunity_difference())
-                    di = abs(class_metric.disparate_impact())
-                    ti = abs(class_metric.theil_index())
+                    stat = class_metric.statistical_parity_difference()
+                    aod = class_metric.average_abs_odds_difference()
+                    eod = class_metric.equal_opportunity_difference()
+                    di = class_metric.disparate_impact()
+                    ti = class_metric.theil_index()
                     f_score = calculate_fairness_score(eod, aod, stat, di, ti)['overall_score']
-                    hist.append([class_metric.accuracy(),stat,aod,f_score])
+                    balanced_acc = 0.5 * (class_metric.true_positive_rate() + class_metric.true_negative_rate())
+                    hist.append([balanced_acc,stat,aod,f_score])
                 results[name][degree] += hist
     return results
 
 
 
-def normalize(base_accuray,base_fairness,method_dict=dict()):
+def normalize(base_accuray, base_fairness, method_dict=dict()):
     """ Normalize baseline and bias mitigation methods within the range of the baseline.
+    
+    Fairness normalization: keeps the same behavior (normalized to baseline range)
+    Accuracy normalization: inverted behavior but ensures 0-1 scale proportional to baseline
 
     Parameters:
         base_accuray (list)  -- Accuracy at each mutation degree
@@ -126,26 +127,56 @@ def normalize(base_accuray,base_fairness,method_dict=dict()):
         method_dict (dict)   -- Accuracy and fairness of bias mitigation methods
         
     Returns:
-        normalized_accuracy (list) -- Normalized accuracy at each mutation degree
+        normalized_accuracy (list) -- Normalized accuracy at each mutation degree (inverted)
         normalized_accuracy (list) -- Normalized fairness at each mutation degree
-        normalized_methods (list) -- Normalized accuracy and fairness of bias mitigation methods
+        normalized_methods (list) -- Normalized accuracy and fairness of bias mitigation methods (0-1 scale)
     """
 
-    # Determine range of values 
+    # Determine range of values for baseline
     range_accuracy = np.max(base_accuray)-np.min(base_accuray)
     range_fairness = np.max(base_fairness)-np.min(base_fairness)
     min_accuracy = np.min(base_accuray)
+    max_accuracy = np.max(base_accuray)
     min_fairness = np.min(base_fairness)
-    # Normalize values
-    normalized_fairness = (base_fairness-min_fairness)/range_fairness
-    normalized_accuracy = (base_accuray-min_accuracy)/range_accuracy
     
-    # Normalize values of bias mitigation methods
+    # Normalize fairness values (keep same behavior)
+    normalized_fairness = (base_fairness-min_fairness)/range_fairness
+    
+    # Normalize accuracy values (inverted behavior)
+    # Higher accuracy becomes lower normalized value
+    normalized_accuracy = (max_accuracy - base_accuray)/range_accuracy
+    
+    # For methods, we need to determine the overall range including both baseline and methods
+    all_accuracies = list(base_accuray) + [acc for acc, fair in method_dict.values()]
+    all_fairness = list(base_fairness) + [fair for acc, fair in method_dict.values()]
+    
+    # Determine global ranges for proper 0-1 scaling
+    global_min_accuracy = np.min(all_accuracies)
+    global_max_accuracy = np.max(all_accuracies)
+    global_range_accuracy = global_max_accuracy - global_min_accuracy
+    
+    global_min_fairness = np.min(all_fairness)
+    global_max_fairness = np.max(all_fairness)
+    global_range_fairness = global_max_fairness - global_min_fairness
+    
+    # Normalize values of bias mitigation methods with proper 0-1 scaling
     normalized_methods = dict()
-    for k, (acc,fair) in method_dict.items():
-        norm_acc = (acc-min_accuracy)/range_accuracy
-        norm_fair = (fair-min_fairness)/range_fairness
-        normalized_methods[k] = (norm_acc,norm_fair)
+    for k, (acc, fair) in method_dict.items():
+        # For accuracy: invert the relationship but ensure 0-1 scale
+        # Higher accuracy relative to global max becomes lower normalized value
+        if global_range_accuracy > 0:
+            norm_acc = (global_max_accuracy - acc) / global_range_accuracy
+        else:
+            norm_acc = 0.0  # Handle case where all accuracies are the same
+            
+        # For fairness: keep proportional to global range
+        if global_range_fairness > 0:
+            norm_fair = (fair - global_min_fairness) / global_range_fairness
+        else:
+            norm_fair = 0.0  # Handle case where all fairness values are the same
+            
+        normalized_methods[k] = (norm_acc, norm_fair)
+    
     return normalized_accuracy, normalized_fairness, normalized_methods
 
 

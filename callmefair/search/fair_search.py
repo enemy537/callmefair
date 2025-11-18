@@ -82,14 +82,15 @@ class BiasSearch(BaseSearch):
         df (pd.DataFrame): Input dataset with features and target
         label_name (str): Name of the target variable
         attribute_names (list[str]): List of sensitive attributes to evaluate
+        n_threads (int): Number of threads for parallel processing
 
     Example:
-        >>> searcher = BiasSearch(df, 'target', ['gender', 'race', 'age'])
+        >>> searcher = BiasSearch(df, 'target', ['gender', 'race', 'age'], n_threads=8)
         >>> table, printable = searcher.evaluate_average()
         >>> print(printable)
     """
 
-    def __init__(self, df: pd.DataFrame, label_name: str, attribute_names: list[str]):
+    def __init__(self, df: pd.DataFrame, label_name: str, attribute_names: list[str], n_threads: int = None):
         """
         Initialize the BiasSearch object.
 
@@ -97,8 +98,10 @@ class BiasSearch(BaseSearch):
             df (pd.DataFrame): Input dataset containing features and target variable
             label_name (str): Name of the target variable column
             attribute_names (list[str]): List of sensitive attributes to evaluate
+            n_threads (int, optional): Number of threads for parallel processing.
+                                     If None, defaults to min(8, os.cpu_count())
         """
-        super(BiasSearch, self).__init__(df, label_name)
+        super(BiasSearch, self).__init__(df, label_name, n_threads)
 
         self.attribute_names = attribute_names
 
@@ -113,7 +116,7 @@ class BiasSearch(BaseSearch):
         Parameters:
             treat_umbalance (bool): Whether to apply NearMiss undersampling
             iterate (int): Number of iterations for robust evaluation
-            model_name (str): Type of model to use ('lr', 'cat', 'xgb', 'mlp')
+            model_name (str): Type of model to use ('lr', 'mlp', 'xgb', 'cat', 'lgbm')
 
         Returns:
             tuple: (table_data, pretty_table) - Raw data and formatted table
@@ -124,15 +127,28 @@ class BiasSearch(BaseSearch):
         """
         att_dict_list = []
         for attribute in self.attribute_names:
-            att = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name)
-            att_dict_list.append(att)
+            try:
+                att = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name)
+                att_dict_list.append(att)
+            except Exception as e:
+                import traceback
+                print("\n[Error] evaluate_attribute failed during evaluate_average")
+                print(f"Attribute: {attribute} | Model: {model_name} | Iterate: {iterate}")
+                print(f"Backend: {self.backend} | Threads: {self.n_threads}")
+                print(f"Exception: {type(e).__name__}: {e}")
+                print('Traceback:\n' + ''.join(traceback.format_exception(type(e), e, e.__traceback__)))
+                # Re-raise to let callers handle or see the full error
+                raise
         
-        table = [['Attribute','Raw Fairness Score','Normalized Fairness score']]
+        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Privileged N','Unprivileged N']]
 
         for att_, list_ in zip(self.attribute_names, att_dict_list):
             name_raw = f'{att_}_raw'
             name_overall = f'{att_}_overall'
-            table.append([att_, list_[name_raw], list_[name_overall]])
+            # Count samples per group in the full dataset
+            privileged_n = int((self.df[att_] == 1).sum())
+            unprivileged_n = int((self.df[att_] == 0).sum())
+            table.append([att_, list_[name_raw], list_[name_overall], privileged_n, unprivileged_n])
 
         printable = pretty_print(table)
         return table, printable
@@ -150,7 +166,7 @@ class BiasSearch(BaseSearch):
         Parameters:
             treat_umbalance (bool): Whether to apply NearMiss undersampling
             iterate (int): Number of iterations for robust evaluation
-            model_name (str): Type of model to use ('lr', 'cat', 'xgb', 'mlp')
+            model_name (str): Type of model to use ('lr', 'mlp', 'xgb', 'cat', 'lgbm')
 
         Returns:
             tuple: (table_data, pretty_table) - Raw data and formatted table
@@ -159,21 +175,73 @@ class BiasSearch(BaseSearch):
             >>> table, printable = searcher.evaluate_combinations()
             >>> print(printable)
         """
+        def _has_two_groups(df, attribute):
+            """
+            Check if the combined attribute creates exactly 2 distinct groups.
+            Returns True if valid for bias analysis, False otherwise.
+            """
+            unique_values = df[attribute].unique()
+            # Must have exactly 2 groups (0 and 1) with sufficient samples in each
+            if len(unique_values) != 2 or set(unique_values) != {0, 1}:
+                return False
+            
+            # Check if both groups have sufficient samples (at least 10 samples each)
+            value_counts = df[attribute].value_counts()
+            if value_counts.min() < 10:
+                return False
+                
+            return True
+
+        def _has_sufficient_class_counts(df, attribute, label_name: str, min_per_class: int = 2) -> bool:
+            """
+            Ensure that for each group of the combined attribute (0/1), the
+            target label has at least `min_per_class` samples for both classes.
+
+            This prevents stratified splits from failing with:
+            "ValueError: The least populated class in y has only 1 member".
+            """
+            # First ensure the full subset contains both classes with minimum counts
+            overall = df[label_name].value_counts()
+            if overall.get(0, 0) < min_per_class or overall.get(1, 0) < min_per_class:
+                return False
+
+            # Then check per-group label distribution
+            for gv in (0, 1):
+                sub = df[df[attribute] == gv]
+                counts = sub[label_name].value_counts()
+                if counts.get(0, 0) < min_per_class or counts.get(1, 0) < min_per_class:
+                    return False
+            return True
+
         combinations_2 = list(combine(self.attribute_names, 2))
         combinations_3 = list(combine(self.attribute_names, 3))
 
-        table = [['Attribute','Raw Fairness Score','Normalized Fairness score']] 
+        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Privileged N','Unprivileged N']] 
+        skipped_combinations = []
 
         for col_1, col_2 in combinations_2:
             tmp_df = combine_attributes(self.df.copy(), col1=col_1, col2=col_2,
                                         operation=CType.intersection)
             attribute = f'{col_1}_{col_2}'
             
-            att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
-
-            name_raw = f'{attribute}_raw'
-            name_overall = f'{attribute}_overall'
-            table.append([attribute, att_dic[name_raw], att_dic[name_overall]])
+            # Check if combination creates two distinct groups and sufficient class counts
+            if not _has_two_groups(tmp_df, attribute) or not _has_sufficient_class_counts(tmp_df, attribute, self.label_name):
+                skipped_combinations.append(attribute)
+                continue
+            
+            try:
+                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+                name_raw = f'{attribute}_raw'
+                name_overall = f'{attribute}_overall'
+                # Count samples per group
+                privileged_n = int((tmp_df[attribute] == 1).sum())
+                unprivileged_n = int((tmp_df[attribute] == 0).sum())
+                table.append([attribute, att_dic[name_raw], att_dic[name_overall], privileged_n, unprivileged_n])
+            except ValueError as e:
+                if "least populated class" in str(e):
+                    skipped_combinations.append(attribute)
+                else:
+                    raise e
 
         for col_1, col_2, col_3 in combinations_3:
             tmp_df = combine_attributes(self.df.copy(), col1=col_1, col2=col_2,
@@ -182,11 +250,27 @@ class BiasSearch(BaseSearch):
                                         operation=CType.intersection)
             attribute = f'{col_1}_{col_2}_{col_3}'
 
-            att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+            # Check if combination creates two distinct groups and sufficient class counts
+            if not _has_two_groups(tmp_df, attribute) or not _has_sufficient_class_counts(tmp_df, attribute, self.label_name):
+                skipped_combinations.append(attribute)
+                continue
 
-            name_raw = f'{attribute}_raw'
-            name_overall = f'{attribute}_overall'
-            table.append([attribute, att_dic[name_raw], att_dic[name_overall]]) 
+            try:
+                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+                name_raw = f'{attribute}_raw'
+                name_overall = f'{attribute}_overall'
+                # Count samples per group
+                privileged_n = int((tmp_df[attribute] == 1).sum())
+                unprivileged_n = int((tmp_df[attribute] == 0).sum())
+                table.append([attribute, att_dic[name_raw], att_dic[name_overall], privileged_n, unprivileged_n])
+            except ValueError as e:
+                if "least populated class" in str(e):
+                    skipped_combinations.append(attribute)
+                else:
+                    raise e
+        
+        if skipped_combinations:
+            print(f"\nSummary: Skipped {len(skipped_combinations)} combinations due to insufficient data: {', '.join(skipped_combinations)}")
         
         printable = pretty_print(table, order_key=1)
         return table, printable
@@ -206,7 +290,7 @@ class BiasSearch(BaseSearch):
             col_2 (str): Name of the second attribute
             treat_umbalance (bool): Whether to apply NearMiss undersampling
             iterate (int): Number of iterations for robust evaluation
-            model_name (str): Type of model to use ('lr', 'cat', 'xgb', 'mlp')
+            model_name (str): Type of model to use ('lr', 'mlp', 'xgb', 'cat', 'lgbm')
 
         Returns:
             tuple: (table_data, pretty_table) - Raw data and formatted table
@@ -216,7 +300,7 @@ class BiasSearch(BaseSearch):
             >>> print(printable)
         """
         # Output labels
-        table = [['Operator','Attribute','Raw Fairness Score','Normalized Fairness score']] 
+        table = [['Operator','Attribute','Raw Fairness Score','Normalized Fairness score','Privileged N','Unprivileged N']] 
 
         for operator in CType:
             tmp_df = combine_attributes(self.df.copy(), col1=col_1, col2=col_2, operation=operator)
@@ -226,7 +310,10 @@ class BiasSearch(BaseSearch):
 
             name_raw = f'{attribute}_raw'
             name_overall = f'{attribute}_overall'
-            table.append([str(operator), attribute, att_dic[name_raw]/iterate, att_dic[name_overall]/iterate])
+            # Count samples per group for the combined attribute
+            privileged_n = int((tmp_df[attribute] == 1).sum())
+            unprivileged_n = int((tmp_df[attribute] == 0).sum())
+            table.append([str(operator), attribute, att_dic[name_raw]/iterate, att_dic[name_overall]/iterate, privileged_n, unprivileged_n])
 
         printable = pretty_print(table, order_key=1)
         return table, printable

@@ -1,15 +1,40 @@
-scikit-learn
-matplotlib
-seaborn
-pandas
-numpy
-aif360[Reductions, inFairness]
-xgboost
-catboost
-BlackBoxAuditing
+# Project dependencies (pinned to avoid version mismatches)
+
+# Core scientific stack
+numpy>=1.26,<2.1
+scipy>=1.11.4,<1.14
+pandas>=2.2,<2.3
+
+# Machine learning
+scikit-learn==1.6.1
 imblearn
-tqdm
-prettytable
-tensorflow
-shapely
-pytorch-tabnet
+threadpoolctl>=3.1,<3.5
+joblib>=1.2,<1.5
+
+# Models
+xgboost>=1.7.6,<2.1
+catboost>=1.2,<1.3
+lightgbm>=4.2,<5
+torch>=2.2,<2.3
+pytorch-tabnet>=4.0,<5
+
+# Visualization
+matplotlib>=3.8,<3.9
+seaborn>=0.13,<0.14
+plotly>=5.19,<6
+kaleido>=0.2.1,<0.3
+prettytable>=3.9,<4
+
+# Fairness toolkits
+aif360>=0.6.1,<0.7
+
+# Utilities
+tqdm>=4.66,<5
+shapely>=2.0,<2.1
+einops>=0.7,<0.8
+
+# Optional / legacy dependency:
+# BlackBoxAuditing is very old and often conflicts with modern stacks.
+# If you need it, install separately in an isolated env:
+#   pip install BlackBoxAuditing==0.1.35 --no-deps
+# BlackBoxAuditing

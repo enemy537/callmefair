@@ -1,0 +1,44 @@
+# Ignore VCS and CI
+.git
+.github
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg-info/
+*.whl
+
+# Virtual environments
+.Python
+env/
+venv/
+.venv/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+
+# Notebooks and large example assets
+examples/**/*.ipynb
+examples/.ipynb_checkpoints/
+examples/catboost_info/
+examples/results/
+examples/run/
+examples/iframe_figures/
+examples.zip
+
+# Documentation build output
+docs/_readthedocs/html/
+docs/_build/
+
+# Figures and media
+figures/
+*.png
+*.jpg
+*.jpeg
+*.gif

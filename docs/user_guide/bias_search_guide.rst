@@ -82,7 +82,7 @@ Combines attributes using logical OR operation:
     from callmefair.search._search_base import CType, combine_attributes
     
     # gender OR race (either attribute is 1)
-    result_df = combine_attributes(df, 'gender', 'race', CType.union)
+    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.union)
 
 Intersection (AND)
 ~~~~~~~~~~~~~~~~~
@@ -91,7 +91,7 @@ Combines attributes using logical AND operation:
 .. code-block:: python
 
     # gender AND race (both attributes are 1)
-    result_df = combine_attributes(df, 'gender', 'race', CType.intersection)
+    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.intersection)
 
 Set Differences
 ~~~~~~~~~~~~~~
@@ -100,10 +100,10 @@ Computes set differences between attributes:
 .. code-block:: python
 
     # gender - race (gender=1 AND race=0)
-    result_df = combine_attributes(df, 'gender', 'race', CType.difference_1_minus_2)
+    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.difference_1_minus_2)
     
     # race - gender (race=1 AND gender=0)
-    result_df = combine_attributes(df, 'gender', 'race', CType.difference_2_minus_1)
+    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.difference_2_minus_1)
 
 Symmetric Difference (XOR)
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,7 +112,7 @@ Combines attributes using XOR operation:
 .. code-block:: python
 
     # gender XOR race (exactly one attribute is 1)
-    result_df = combine_attributes(df, 'gender', 'race', CType.symmetric_difference)
+    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.symmetric_difference)
 
 Supported Models
 ---------------
@@ -331,4 +331,4 @@ The bias search functionality integrates with other CallMeFair modules:
     
     # Apply mitigation
     bm_manager = BMManager()
-    mitigated_df = bm_manager.apply_mitigation(df, 'reweighing', 'gender') 
+    mitigated_df = bm_manager.apply_mitigation(df, 'reweighing', 'gender')

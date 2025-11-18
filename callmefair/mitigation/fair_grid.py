@@ -51,11 +51,7 @@ from callmefair.mitigation.fair_log import csvLogger
 import numpy as np
 from datetime import datetime
 from dataclasses import dataclass   
-try:
-    import tensorflow.compat.v1 as tf
-    tf.disable_eager_execution()
-except ImportError:
-    tf = None
+
 
 #TODO adapt model fit and predict probabilites to an abstract interface
 
@@ -65,7 +61,7 @@ def get_model_proba(model, bmI: BMInterface) -> tuple[np.ndarray]:
     
     This function provides a unified interface for training models and obtaining
     probability predictions across different ML frameworks. It handles various
-    model types including scikit-learn, XGBoost, TabNet, and others.
+    model types including scikit-learn, XGBoost, TabNet, TabTransformer, and others.
     
     Args:
         model: The machine learning model to train and evaluate
@@ -90,11 +86,12 @@ def get_model_proba(model, bmI: BMInterface) -> tuple[np.ndarray]:
     x_test, _ = bmI.get_test_xy()
 
     if model.__str__().startswith('LogisticRegression'):
+        # n_jobs is configured by caller; sample_weight used when available
         model = model.fit(x_train, y_train, sample_weight=bmI.get_train_BLD().instance_weights)
         y_val_pred = model.predict_proba(x_val)
         y_test_pred = model.predict_proba(x_test)
 
-    elif any([model.__str__().startswith(i) for i in ('XGBClassifier', 'MLP')]):
+    elif any([model.__str__().startswith(i) for i in ('XGBClassifier', 'MLP', 'RandomForestClassifier')]):
         model = model.fit(x_train, y_train)
         y_val_pred = model.predict_proba(x_val)
         y_test_pred = model.predict_proba(x_test)
@@ -106,7 +103,39 @@ def get_model_proba(model, bmI: BMInterface) -> tuple[np.ndarray]:
         y_val_pred = model.predict_proba(x_val)
         y_test_pred = model.predict_proba(x_test)
 
+    elif model.__class__.__name__ == 'LGBMClassifier':
+        # LightGBM supports sample weights and eval_set
+        # Create DataFrames to avoid feature names warning
+        import pandas as pd
+        feature_names = [f'feature_{i}' for i in range(x_train.shape[1])]
+        x_train_df = pd.DataFrame(x_train, columns=feature_names)
+        x_val_df = pd.DataFrame(x_val, columns=feature_names)
+        x_test_df = pd.DataFrame(x_test, columns=feature_names)
+        
+        model = model.fit(x_train_df, y_train,
+                          sample_weight=bmI.get_train_BLD().instance_weights,
+                          eval_set=[(x_val_df, y_val)],
+                          callbacks=[])  # empty callbacks list for silent mode
+        y_val_pred = model.predict_proba(x_val_df)
+        y_test_pred = model.predict_proba(x_test_df)
+
+    elif model.__class__.__name__ == 'TabTransformer':
+        # TabTransformer requires DataFrame input and handles categorical features automatically
+        import pandas as pd
+        
+        # Convert numpy arrays to DataFrames with proper column names
+        feature_names = [f'feature_{i}' for i in range(x_train.shape[1])]
+        x_train_df = pd.DataFrame(x_train, columns=feature_names)
+        x_val_df = pd.DataFrame(x_val, columns=feature_names)
+        x_test_df = pd.DataFrame(x_test, columns=feature_names)
+        
+        # TabTransformer fit method
+        model = model.fit(x_train_df, y_train)
+        y_val_pred = model.predict_proba(x_val_df)
+        y_test_pred = model.predict_proba(x_test_df)
+
     else:
+        # For sklearn ensembles like RandomForest, n_jobs is set by caller
         model = model.fit(x_train, y_train, eval_set=[(x_val , y_val)])
         y_val_pred = model.predict_proba(x_val)
         y_test_pred = model.predict_proba(x_test)
@@ -335,7 +364,7 @@ class BMGridSearch:
         logger = csvLogger(f'experiment_({datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")})')
         experiment_dict = {'model':self.model.__str__().split('(')[0], 'BM':'baseline'}
         experiment_dict.update(self.bmM.get_report())
-        experiment_dict.update({'fair_score':self.bmM.get_score()})
+        experiment_dict.update({'fair_score':self.bmM.get_score()['overall_score']})
 
         exp_data_list = [experiment_dict]
 
@@ -386,7 +415,7 @@ class BMGridSearch:
 
             new_exp_dict = {'model':self.model.__str__().split('(')[0], 'BM':bm_name[1:]}
             new_exp_dict.update(self.bmM.get_report())
-            new_exp_dict.update({'fair_score':self.bmM.get_score()})
+            new_exp_dict.update({'fair_score':self.bmM.get_score()['overall_score']})
             exp_data_list.append(new_exp_dict)
 
             self.bmI.restore_BLD()

@@ -1,0 +1,90 @@
+Loading dataset: ..\data\wids_pre\wids.csv
+Running BiasSearch with label='DiagPeriodL90D', attributes=['patient_age', 'race', 'payer', 'neighborhood_affluence'], models=['lr', 'mlp', 'xgb', 'cat'], iterations=10, n_threads=40
+
+Model 'lr':
++------------------------+---------------------+---------------------------+
+|       Attribute        |  Raw Fairness Score | Normalized Fairness score |
++------------------------+---------------------+---------------------------+
+|      patient_age       |  1.366265132572148  |           0.7516          |
+|          race          | 0.25257424217005264 |           0.1403          |
+|         payer          | 0.16829707308459874 |    0.09359999999999999    |
+| neighborhood_affluence | 0.13521063745404457 |           0.075           |
++------------------------+---------------------+---------------------------+
+
+Model 'mlp':
++------------------------+---------------------+---------------------------+
+|       Attribute        |  Raw Fairness Score | Normalized Fairness score |
++------------------------+---------------------+---------------------------+
+|      patient_age       |  0.9735515722698574 |     0.5409999999999999    |
+|          race          |  0.2328593652087893 |           0.1293          |
+|         payer          |  0.1492463298749726 |           0.0829          |
+| neighborhood_affluence | 0.10803835168027161 |            0.06           |
++------------------------+---------------------+---------------------------+
+
+Model 'xgb':
++------------------------+---------------------+---------------------------+
+|       Attribute        |  Raw Fairness Score | Normalized Fairness score |
++------------------------+---------------------+---------------------------+
+|      patient_age       |  1.0965466450395027 |           0.6091          |
+|          race          |  0.2479933192668032 |           0.1378          |
+| neighborhood_affluence | 0.14429662012005345 |    0.08020000000000002    |
+|         payer          |  0.1413919404921945 |    0.07850000000000001    |
++------------------------+---------------------+---------------------------+
+
+Model 'cat':
++------------------------+---------------------+---------------------------+
+|       Attribute        |  Raw Fairness Score | Normalized Fairness score |
++------------------------+---------------------+---------------------------+
+|      patient_age       |  0.6279674521886502 |    0.34879999999999994    |
+|          race          | 0.29245576510342136 |    0.16250000000000003    |
+|         payer          | 0.14924098774758193 |           0.083           |
+| neighborhood_affluence | 0.11375729245753255 |    0.06319999999999999    |
++------------------------+---------------------+---------------------------+
+Saving PNG figures to: C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\examples\script
+
+Running 2-way and 3-way combinations analysis...
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "C:\Users\enemy\anaconda3\Lib\concurrent\futures\process.py", line 263, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\callmefair\search\_search_base.py", line 269, in process_wrapper_training
+    df_test, df_val = train_test_split(
+                      ^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\anaconda3\Lib\site-packages\sklearn\utils\_param_validation.py", line 213, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\anaconda3\Lib\site-packages\sklearn\model_selection\_split.py", line 2801, in train_test_split
+    train, test = next(cv.split(X=arrays[0], y=stratify))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\anaconda3\Lib\site-packages\sklearn\model_selection\_split.py", line 1843, in split
+    for train, test in self._iter_indices(X, y, groups):
+  File "C:\Users\enemy\anaconda3\Lib\site-packages\sklearn\model_selection\_split.py", line 2247, in _iter_indices
+    raise ValueError(
+ValueError: The least populated class in y has only 1 member, which is too few. The minimum number of groups for any class cannot be less than 2.
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\examples\script\bias_search_example.py", line 288, in <module>
+    main()
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\examples\script\bias_search_example.py", line 224, in main
+    comb_table, comb_printable = dfbias.evaluate_combinations(iterate=iterations, model_name=args.combinations_model)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\callmefair\search\fair_search.py", line 188, in evaluate_combinations
+    att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\callmefair\search\_search_base.py", line 565, in evaluate_attribute
+    for result in self.optimizer.map(process_wrapper_training, args_list, max_workers=n_threads):
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\OneDrive - University of Calgary\UofC\research\callmefair\callmefair\search\optimizer.py", line 84, in map
+    yield future.result()
+          ^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\anaconda3\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\enemy\anaconda3\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+ValueError: The least populated class in y has only 1 member, which is too few. The minimum number of groups for any class cannot be less than 2.

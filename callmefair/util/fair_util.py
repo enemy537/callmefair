@@ -25,13 +25,11 @@ Example:
     >>> from callmefair.util.fair_util import BMInterface, calculate_fairness_score
     >>> import pandas as pd
     >>> 
-    >>> # Load your data
-    >>> train_df = pd.read_csv('train.csv')
-    >>> val_df = pd.read_csv('val.csv')
-    >>> test_df = pd.read_csv('test.csv')
+    >>> # Load your full dataset
+    >>> df = pd.read_csv('data.csv')
     >>> 
-    >>> # Initialize the interface
-    >>> bm_interface = BMInterface(train_df, val_df, test_df, 'label', ['gender'])
+    >>> # Initialize the interface with a single DataFrame
+    >>> bm_interface = BMInterface(df=df, label='label', protected=['gender'])
     >>> 
     >>> # Calculate fairness score
     >>> fairness_result = calculate_fairness_score(
@@ -44,8 +42,9 @@ from dataclasses import dataclass
 # Fairness Dataset
 from aif360.datasets import BinaryLabelDataset
 # Fairness metrics
-from aif360.metrics import ClassificationMetric
+from aif360.metrics import ClassificationMetric, BinaryLabelDatasetMetric
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
 
@@ -159,6 +158,111 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
         'is_fair': all(evaluations.values())
     }
 
+def find_best_privileged_threshold(
+    df: pd.DataFrame,
+    numeric_column: str,
+    label_column: str,
+    thresholds = range(40, 75),
+    favorable_label: int = 1,
+    unfavorable_label: int = 0,
+    minimize_spd_abs: bool = True,
+    privileged_name: str = 'privileged',
+    use_ge_operator: bool = True,
+    verbose: bool = False,
+    di_target: float = 1.0,
+    spd_weight: float = 1.0,
+    di_weight: float = 1.0,
+) -> dict:
+    """
+    Search for a numeric threshold that defines privileged/unprivileged groups to improve fairness.
+
+    This function labels a DataFrame with a binary protected attribute based on a numeric
+    column threshold and evaluates fairness metrics for each threshold using AIF360.
+    It selects the threshold that simultaneously maximizes disparate impact and
+    minimizes statistical parity difference (optionally by absolute value).
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing features, label, and numeric column.
+        numeric_column (str): Name of the numeric column used to define privilege (e.g., 'age').
+        label_column (str): Name of the label column (e.g., 'stroke').
+        thresholds (Iterable[int|float]): Sequence of thresholds to evaluate (default range(40, 75)).
+        favorable_label (int): Value representing the favorable class label (default 1).
+        unfavorable_label (int): Value representing the unfavorable class label (default 0).
+        minimize_spd_abs (bool): If True, minimize absolute SPD; otherwise minimize raw SPD.
+        privileged_name (str): Name for the generated protected attribute column (default 'privileged').
+        use_ge_operator (bool): If True, privilege is `>= threshold`; else it is `> threshold`.
+        verbose (bool): If True, print the best threshold and metrics.
+
+    Returns:
+        dict: Dictionary with keys:
+            - 'best_threshold' (int|float): Threshold achieving desired fairness trade-off.
+            - 'best_disparate_impact' (float): Disparate impact at the best threshold.
+            - 'best_stat_parity_diff' (float): Statistical parity difference at the best threshold.
+
+    Example:
+        >>> # Replicates the provided snippet, generalized
+        >>> result = find_best_privileged_threshold(
+        ...     df=df, numeric_column='age', label_column='stroke', thresholds=range(40, 75)
+        ... )
+        >>> result['best_threshold']
+        >>> result['best_disparate_impact'], result['best_stat_parity_diff']
+    """
+
+    best_threshold = None
+    best_di = None
+    best_spd = None
+    best_score = float('inf')
+
+    for threshold in thresholds:
+        labeled_df = df.copy()
+        if use_ge_operator:
+            labeled_df[privileged_name] = (labeled_df[numeric_column] >= threshold).astype(int)
+        else:
+            labeled_df[privileged_name] = (labeled_df[numeric_column] > threshold).astype(int)
+
+        bld = BinaryLabelDataset(
+            df=labeled_df,
+            label_names=[label_column],
+            protected_attribute_names=[privileged_name],
+            favorable_label=favorable_label,
+            unfavorable_label=unfavorable_label,
+        )
+
+        metric = BinaryLabelDatasetMetric(
+            bld,
+            privileged_groups=[{privileged_name: 1}],
+            unprivileged_groups=[{privileged_name: 0}],
+        )
+
+        disparate_impact = metric.disparate_impact()
+        stat_parity_diff = metric.statistical_parity_difference()
+        spd_dev = abs(stat_parity_diff) if minimize_spd_abs else stat_parity_diff
+        di_dev = abs(disparate_impact - di_target)
+        score = spd_weight * spd_dev + di_weight * di_dev
+
+        if score < best_score:
+            best_score = score
+            best_threshold = threshold
+            best_di = disparate_impact
+            best_spd = stat_parity_diff
+
+    result = {
+        'best_threshold': best_threshold,
+        'best_disparate_impact': best_di,
+        'best_stat_parity_diff': best_spd,
+    }
+
+    if verbose:
+        print(f"Best threshold on {numeric_column}: {best_threshold}")
+        print(f"Disparate Impact at best: {best_di} (target {di_target})")
+        print(
+            "Statistical Parity Difference at best threshold" +
+            (" (abs minimized)" if minimize_spd_abs else "") +
+            f": {best_spd}"
+        )
+
+    return result
+
 @dataclass
 class BMnames:
     """
@@ -235,29 +339,111 @@ class BMInterface:
         >>> X_train, y_train = bm_interface.get_train_xy()
     """
     
-    def __init__(self, df_train: pd.DataFrame, df_val: pd.DataFrame, df_test: pd.DataFrame, 
-                 label: str, protected: list):
+    def __init__(self, 
+                 df: pd.DataFrame,
+                 label: str,
+                 protected: list,
+                 random_state: int = 42,
+                 shuffle: bool = True,
+                 test_size: float = 0.1,
+                 val_size: float = 0.1):
         """
         Initialize the Bias Mitigation Interface.
         
         Args:
-            df_train (pd.DataFrame): Training dataset
-            df_val (pd.DataFrame): Validation dataset
-            df_test (pd.DataFrame): Test dataset
+            df (pd.DataFrame): Single dataset to be split into train/val/test
+                with stratified 80/10/10 proportions by the `label` column.
             label (str): Name of the target/label column
             protected (list): List of protected attribute column names
+            random_state (int): Random seed used for splitting
+            shuffle (bool): Whether to shuffle before splitting
+            test_size (float): Proportion for test split from the original dataset
+            val_size (float): Proportion for validation split from the original dataset
                 
         Example:
             >>> bm_interface = BMInterface(
-            >>>     df_train=train_df,
-            >>>     df_val=val_df,
-            >>>     df_test=test_df,
+            >>>     df=full_df,
             >>>     label='income',
             >>>     protected=['gender', 'race']
             >>> )
         """
-        # Assuming train, val, test as default order
-        self.data_sets = [df_train, df_val, df_test]
+        # Validate required arguments
+        if df is None:
+            raise ValueError("`df` must be provided.")
+        if label is None or protected is None:
+            raise ValueError("`label` and `protected` must be provided.")
+
+        # Enforce balanced splits: ensure each set contains both classes when possible
+        labels = df[label]
+        unique_classes = pd.unique(labels)
+        if len(unique_classes) < 2:
+            raise ValueError("BMInterface requires at least two classes in the label column.")
+
+        def attempt(seed: int, data_frame: pd.DataFrame):
+            # First split test_size from original for test, stratified by label
+            train_val_df, test_df = train_test_split(
+                data_frame,
+                test_size=test_size,
+                random_state=seed,
+                shuffle=shuffle,
+                stratify=data_frame[label]
+            )
+            # Then split validation to be val_size of original: compute relative portion
+            val_rel = val_size / (1.0 - test_size)
+            train_df, val_df = train_test_split(
+                train_val_df,
+                test_size=val_rel,
+                random_state=seed,
+                shuffle=shuffle,
+                stratify=train_val_df[label]
+            )
+            return train_df, val_df, test_df
+
+        def good_split(tr_df: pd.DataFrame, va_df: pd.DataFrame, te_df: pd.DataFrame) -> bool:
+            s_tr = set(np.unique(tr_df[label]))
+            s_va = set(np.unique(va_df[label]))
+            s_te = set(np.unique(te_df[label]))
+            return len(s_tr) == 2 and s_tr == s_va == s_te
+
+        final_sets = None
+        max_tries = 15
+        last_attempt = None
+        for i in range(max_tries):
+            tr, va, te = attempt(random_state + i, df)
+            last_attempt = (tr, va, te)
+            if good_split(tr, va, te):
+                final_sets = (tr, va, te)
+                break
+
+        if final_sets is None:
+            # Minimal oversampling of minority class to enable balanced splits when class counts are too small
+            vc = df[label].value_counts()
+            min_class = vc.idxmin()
+            need = max(0, 3 - int(vc[min_class]))
+            if need > 0:
+                dup = df[df[label] == min_class]
+                try:
+                    add = dup.sample(n=need, replace=True, random_state=random_state)
+                    df_aug = pd.concat([df, add], ignore_index=True)
+                except Exception:
+                    df_aug = df
+            else:
+                df_aug = df
+
+            for i in range(max_tries):
+                tr, va, te = attempt(random_state + i, df_aug)
+                last_attempt = (tr, va, te)
+                if good_split(tr, va, te):
+                    final_sets = (tr, va, te)
+                    break
+
+            if final_sets is None:
+                # Fall back to the last attempted split if perfectly balanced splits are not achievable
+                final_sets = last_attempt
+
+        train_df, val_df, test_df = final_sets
+        self.data_sets = [train_df, val_df, test_df]
+
         self.BM_attr = BMnames(label_names=label, protected_att=protected)
         self.transform = False
         self.__generate_sets()
@@ -762,7 +948,16 @@ class BMMetrics:
             >>> print(f"Equal Opportunity Difference: {eod:.4f}")
         """
         eq_opp_diff = self.cmetrics.equal_opportunity_difference()
-        avg_odd_diff = self.cmetrics.average_odds_difference()
+        
+        # Handle potential errors in avg_odd_diff calculation due to exploding FPR/TPR
+        try:
+            avg_odd_diff = self.cmetrics.average_odds_difference()
+        except (ValueError, ZeroDivisionError, RuntimeError) as e:
+            # Set worst possible value for avg_odd_diff when calculation fails
+            # This indicates maximum unfairness (far from optimal value of 0.0)
+            avg_odd_diff = 1.0
+            print(f"Warning: avg_odd_diff calculation failed, using worst-case value 1.0. Error: {e}")
+        
         spd = self.cmetrics.statistical_parity_difference()
         disparate_impact = self.cmetrics.disparate_impact()
         theil_idx = self.cmetrics.theil_index()
