@@ -120,19 +120,39 @@ def get_model_proba(model, bmI: BMInterface) -> tuple[np.ndarray]:
         y_test_pred = model.predict_proba(x_test_df)
 
     elif model.__class__.__name__ == 'TabTransformer':
-        # TabTransformer requires DataFrame input and handles categorical features automatically
+        # TabTransformer expects a DataFrame that includes the target column.
+        # It manages preprocessing internally and prefers raw feature data.
         import pandas as pd
-        
-        # Convert numpy arrays to DataFrames with proper column names
+
+        # Build DataFrames with feature names and attach the target column expected by the model
         feature_names = [f'feature_{i}' for i in range(x_train.shape[1])]
-        x_train_df = pd.DataFrame(x_train, columns=feature_names)
-        x_val_df = pd.DataFrame(x_val, columns=feature_names)
-        x_test_df = pd.DataFrame(x_test, columns=feature_names)
-        
-        # TabTransformer fit method
-        model = model.fit(x_train_df, y_train)
-        y_val_pred = model.predict_proba(x_val_df)
-        y_test_pred = model.predict_proba(x_test_df)
+        train_df = pd.DataFrame(x_train, columns=feature_names)
+        val_df = pd.DataFrame(x_val, columns=feature_names)
+        test_df = pd.DataFrame(x_test, columns=feature_names)
+
+        # The TabTransformer instance carries the configured target name
+        target_col = getattr(model, 'target', 'target')
+        train_df[target_col] = y_train
+
+        # Fit does not return the model; keep the instance and call without reassigning
+        model.fit(train_df)
+
+        # For prediction, TabTransformer checks feature columns and target presence for consistency
+        # Attach a dummy target column to val/test using zeros to satisfy the interface
+        # (values are ignored during prediction)
+        val_df[target_col] = 0
+        test_df[target_col] = 0
+
+        y_val_pred = model.predict_proba(val_df)
+        y_test_pred = model.predict_proba(test_df)
+
+        # Ensure predictions are 2D probability matrices for BMMetrics
+        # If binary model returns a 1D vector of positive-class probabilities,
+        # expand to two columns [P(neg), P(pos)] so downstream indexing works.
+        if y_val_pred.ndim == 1:
+            y_val_pred = np.column_stack((1.0 - y_val_pred, y_val_pred))
+        if y_test_pred.ndim == 1:
+            y_test_pred = np.column_stack((1.0 - y_test_pred, y_test_pred))
 
     else:
         # For sklearn ensembles like RandomForest, n_jobs is set by caller

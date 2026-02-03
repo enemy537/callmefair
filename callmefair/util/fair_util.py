@@ -98,6 +98,75 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
         >>> for metric, is_acceptable in result['metric_evaluations'].items():
         >>>     print(f"{metric}: {'✓' if is_acceptable else '✗'}")
     """
+    # Validate and coerce metric inputs to avoid breaking the score on invalid values
+    # Invalid inputs (None, NaN, non-numeric, or implausibly large/small) are mapped
+    # to fixed "unfair" defaults that push the overall score towards unfairness
+    # instead of raising errors.
+
+    def _validate_metric(name: str, value):
+        unfair_defaults = {
+            'EOD': 1.0,   # large difference in opportunity
+            'AOD': 1.0,   # large odds difference
+            'SPD': 1.0,   # large statistical parity difference
+            'DI': 0.1,    # strong disparate impact
+            'TI': 1.0,    # high inequality
+        }
+
+        # Handle obvious invalids and container types early
+        if value is None:
+            return unfair_defaults[name]
+
+        # Unpack common container types (use first element); empty -> invalid
+        if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+            if len(value) == 0:
+                return unfair_defaults[name]
+            # Recursively validate first element
+            return _validate_metric(name, value[0])
+
+        # Booleans should not be treated as numeric metrics
+        if isinstance(value, bool):
+            return unfair_defaults[name]
+
+        # Treat empty/whitespace strings as invalid
+        if isinstance(value, str):
+            if value.strip() == "":
+                return unfair_defaults[name]
+            # Let float() handle things like 'nan', 'inf', etc.
+
+        # Coerce to float when possible
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return unfair_defaults[name]
+
+        # Handle NaN/inf and other non-finite outputs from invalid divisions
+        if not np.isfinite(v):
+            return unfair_defaults[name]
+
+        # Simple plausibility bounds per metric
+        if name in ('EOD', 'AOD', 'SPD'):
+            # These are differences and should reasonably live in [-1, 1]
+            if abs(v) > 1.0:
+                return unfair_defaults[name]
+        elif name == 'DI':
+            # Ratio; negative, zero, extremely small, or extremely large values
+            # are considered invalid for disparate impact in this context.
+            if v <= 0 or v < 1e-6 or v > 5.0:
+                return unfair_defaults[name]
+        elif name == 'TI':
+            # Inequality index; we expect it within [0, 1] for our use case
+            if v < 0 or v > 1.0:
+                return unfair_defaults[name]
+
+        return v
+
+    # Apply validation to all metric inputs
+    EOD = _validate_metric('EOD', EOD)
+    AOD = _validate_metric('AOD', AOD)
+    SPD = _validate_metric('SPD', SPD)
+    DI = _validate_metric('DI', DI)
+    TI = _validate_metric('TI', TI)
+
     # Define optimal values for each fairness metric
     optimal_values = {
         'EOD': 0.0,  # Equal Opportunity Difference

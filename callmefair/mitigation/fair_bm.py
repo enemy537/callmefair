@@ -267,7 +267,14 @@ class BMManager:
         """
         if tf is None:
             raise ImportError("TensorFlow is required for Adversarial Debiasing")
-            
+        
+        # AIF360's AdversarialDebiasing requires TF graph mode. Ensure eager is disabled.
+        try:
+            tf.compat.v1.disable_eager_execution()
+        except Exception:
+            # If eager is already disabled or TF version differs, proceed.
+            pass
+
         sess = tf.compat.v1.Session()
 
         ad = AdversarialDebiasing(privileged_groups=self.privileged_group,

@@ -34,7 +34,7 @@ try:
 except Exception:
     TabNetClassifier = None
 try:
-    # TabTransformer (TensorFlow / Keras backend, CPU-only in this MPI script)
+    # TabTransformer (TensorFlow / Keras backend, GPU-capable when available)
     from callmefair.util.models import TabTransformer
 except Exception:
     TabTransformer = None
@@ -70,8 +70,8 @@ def build_classifiers(seed: int = 42, threads: int | None = None):
     if threads is None:
         threads = max(1, os.cpu_count() or 1)
     models = {
-        # Use multi-thread capable solver; threading controlled by BLAS/OMP env
-        "logreg": LogisticRegression(max_iter=200, solver="saga", random_state=seed),
+        # Canonical keys aligned with BaseSearch wrapper_training
+        "lr": LogisticRegression(max_iter=200, solver="saga", random_state=seed),
         "mlp": MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=100, random_state=seed),
         # XGBoost honors n_jobs for tree methods
         "xgb": XGBClassifier(
@@ -86,7 +86,7 @@ def build_classifiers(seed: int = 42, threads: int | None = None):
             base_score=0.5,
         ),
         # CatBoost uses thread_count for CPU parallelism
-        "catboost": CatBoostClassifier(iterations=300, learning_rate=0.1, depth=6, verbose=False, random_state=seed, thread_count=threads),
+        "cat": CatBoostClassifier(iterations=300, learning_rate=0.1, depth=6, verbose=False, random_state=seed, thread_count=threads),
     }
     if TabNetClassifier is not None:
         models["tabnet"] = TabNetClassifier(seed=seed)
@@ -101,7 +101,7 @@ def build_classifiers(seed: int = 42, threads: int | None = None):
             random_state=seed,
             verbose=-1  # silent mode
         )
-    # Optional TabTransformer (TensorFlow/Keras backend, CPU-only here)
+    # Optional TabTransformer (TensorFlow/Keras backend, prefers GPU if available)
     if TabTransformer is not None:
         tab_config = {
             "batch_size": 1024,
@@ -282,13 +282,17 @@ def main():
     parser.add_argument("--dataset", type=str, default=str(default_dataset), help="CSV dataset path")
     parser.add_argument("--label", type=str, default="readmitted", help="Label column name")
     parser.add_argument("--sensitive", type=str, nargs="+", default=["age", "gender", "race"], help="Sensitive attribute columns")
-    parser.add_argument("--model", type=str, default="logreg", help="Classifier key or 'all'")
+    parser.add_argument("--model", type=str, default="lr", help="Classifier key or 'all'")
     parser.add_argument(
         "--models",
         type=str,
         nargs="+",
         default=None,
-        help="List of classifier keys to run (space- or comma-separated), or 'all'",
+        help=(
+            "List of classifier keys to run (space- or comma-separated), or 'all'. "
+            "Canonical keys: lr, mlp, xgb, cat, lgbm, tabnet, tabtransformer. "
+            "Aliases accepted: logreg, logistic, catboost, lightgbm, tabtransform"
+        ),
     )
     parser.add_argument("--output", type=str, default=str(output_json), help="Output JSON path")
     parser.add_argument("--log", type=str, default=str(default_log), help="Log file path")
@@ -345,20 +349,35 @@ def main():
     configure_threads(threads_per_rank)
 
     models = build_classifiers(args.seed, threads=threads_per_rank)
+    # Alias map so CLI can accept alternative names while canonicalizing to BaseSearch keys
+    alias_map = {
+        "logreg": "lr",
+        "logistic": "lr",
+        "catboost": "cat",
+        "lightgbm": "lgbm",
+        "tabtransform": "tabtransformer",
+    }
     if args.models:
         # Normalize tokens: support comma-separated entries and strip whitespace
         raw = args.models
         tokens = []
         for item in raw:
             tokens.extend(item.split(","))
-        selected = [t.strip() for t in tokens if t.strip()]
+        selected = []
+        for t in tokens:
+            tok = t.strip()
+            if not tok:
+                continue
+            canon = alias_map.get(tok.lower(), tok.lower())
+            selected.append(canon)
         # Special case: allow 'all' via --models
         if any(s.lower() == "all" for s in selected):
             selected = list(models.keys())
     elif args.model == "all":
         selected = list(models.keys())
     else:
-        selected = [args.model]
+        # Canonicalize single --model via alias_map
+        selected = [alias_map.get(args.model.lower(), args.model.lower())]
     # Validate selected models
     invalid = [m for m in selected if m not in models]
     if invalid:

@@ -53,14 +53,23 @@ from sklearn.linear_model import LogisticRegression
 from catboost import CatBoostClassifier
 
 # Deep learning backend for MLP (GPU-capable when available)
+# Suppress TensorFlow logs
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+
 # Optional models: LightGBM
 try:
     from lightgbm import LGBMClassifier  # https://github.com/microsoft/LightGBM
 except Exception:
     LGBMClassifier = None
+
+# Optional models: TabNet (PyTorch-based)
+try:
+    from pytorch_tabnet.tab_model import TabNetClassifier
+except Exception:
+    TabNetClassifier = None
 
 
 class KerasMLPWrapper:
@@ -107,54 +116,102 @@ class CType(Enum):
         """Return string representation of the operation type."""
         return super().__str__().split('.')[1]
 
-def combine_attributes(df, col1, col2, operation: CType):
-    """
-    Combines two binary columns in a DataFrame using a specified set operation,
-    replacing the original columns with a single combined column.
+def _is_gpu_available():
+    """Check if GPU is available for TensorFlow or PyTorch."""
+    # Check TensorFlow
+    try:
+        if tf.config.list_physical_devices('GPU'):
+            return True
+    except Exception:
+        pass
+    
+    # Check PyTorch
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return True
+    except ImportError:
+        pass
+        
+    return False
 
-    This function creates composite protected groups by combining two binary
-    sensitive attributes using set operations. The resulting combined attribute
-    can be used for more sophisticated bias analysis.
+def combine_attributes(df, cols, operation: CType):
+    """
+    Combine multiple binary columns in a DataFrame using a specified set operation.
 
     Parameters:
         df (pd.DataFrame): Input DataFrame containing the binary columns
-        col1 (str): Name of the first binary column (e.g., 'gender')
-        col2 (str): Name of the second binary column (e.g., 'race')
-        operation (CType): Set operation to apply ('union', 'intersection', 
-                          'difference_1_minus_2', 'difference_2_minus_1', 
-                          'symmetric_difference')
+        cols (list[str]): List of column names to combine (must be present in df)
+        operation (CType): Set operation to apply:
+            - CType.union: logical OR across all cols
+            - CType.intersection: logical AND across all cols
+            - CType.difference_1_minus_2: first_col AND NOT (OR of remaining cols)
+            - CType.difference_2_minus_1: last_col AND NOT (OR of remaining cols)
+            - CType.symmetric_difference: XOR (parity) across all cols
 
     Returns:
-        pd.DataFrame: New DataFrame with original columns replaced by combined column
-
-    Raises:
-        ValueError: If columns are not binary (contain values other than 0 or 1)
-
-    Example:
-        >>> df = pd.DataFrame({'gender': [1, 0, 1, 0], 'race': [1, 1, 0, 0]})
-        >>> result = combine_attributes(df, 'gender', 'race', CType.intersection)
-        >>> print(result.columns)
-        ['gender_race']
+        pd.DataFrame: New DataFrame with original columns removed and a single combined column
+                      named by joining the original names with underscores.
     """
-    # Check if columns are binary (0 or 1)
-    if not all(df[col].isin([0, 1]).all() for col in [col1, col2]):
-        raise ValueError("Columns must contain only binary values (0 or 1).")
+    import functools
+    import operator
 
-    # Compute the combined column based on the operation
-    if operation == CType.union:                   # and
-        combined = df[col1] | df[col2]
-    elif operation == CType.intersection:          # or
-        combined = df[col1] & df[col2]
-    elif operation == CType.difference_1_minus_2:  # col1 - col2
-        combined = df[col1] & ~df[col2]
-    elif operation == CType.difference_2_minus_1:  # col2 - col1
-        combined = df[col2] & ~df[col1]
-    elif operation == CType.symmetric_difference:  # xor
-        combined = df[col1] ^ df[col2]
+    # Normalize cols input
+    if not isinstance(cols, (list, tuple)) or len(cols) == 0:
+        raise ValueError("`cols` must be a non-empty list or tuple of column names.")
 
-    # Create a new DataFrame, dropping original columns and adding the combined column
-    new_col_name = f"{col1}_{col2}"
-    df_new = df.drop([col1, col2], axis=1).assign(**{new_col_name: combined})
+    cols = list(cols)
+
+    # Ensure all columns exist
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"Columns not found in DataFrame: {missing}")
+
+    # If only one column provided, rename to combined name (still drop original and re-add)
+    new_col_name = "_".join(cols)
+
+    # Validate binary values (allow ints 0/1 or booleans)
+    for c in cols:
+        # allow bool dtype or numeric 0/1 only
+        series = df[c]
+        unique_vals = set(series.dropna().unique())
+        allowed = {0, 1, False, True}
+        if not unique_vals.issubset(allowed):
+            raise ValueError(f"Column '{c}' must contain only binary values (0/1 or booleans). Found: {unique_vals}")
+
+    # Compute combined column based on operation
+    if len(cols) == 1:
+        combined = df[cols[0]].astype(int)
+    else:
+        if operation == CType.union:
+            # logical OR across all columns
+            combined_bool = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols))
+            combined = combined_bool.astype(int)
+        elif operation == CType.intersection:
+            # logical AND across all columns
+            combined_bool = functools.reduce(operator.and_, (df[c].astype(bool) for c in cols))
+            combined = combined_bool.astype(int)
+        elif operation == CType.symmetric_difference:
+            # parity XOR across all columns
+            combined_bool = functools.reduce(operator.xor, (df[c].astype(bool) for c in cols))
+            combined = combined_bool.astype(int)
+        elif operation == CType.difference_1_minus_2:
+            # first_col AND NOT (OR of remaining)
+            first = df[cols[0]].astype(bool)
+            others_or = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols[1:]))
+            combined_bool = first & (~others_or)
+            combined = combined_bool.astype(int)
+        elif operation == CType.difference_2_minus_1:
+            # last_col AND NOT (OR of others)
+            last = df[cols[-1]].astype(bool)
+            others_or = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols[:-1]))
+            combined_bool = last & (~others_or)
+            combined = combined_bool.astype(int)
+        else:
+            raise ValueError(f"Unsupported operation: {operation}")
+
+    # Build new DataFrame: drop original columns and add combined column
+    df_new = df.drop(columns=cols, errors=False).assign(**{new_col_name: combined})
 
     return df_new
 
@@ -175,7 +232,7 @@ def wrapper_training(train_bld:BinaryLabelDataset,
         val_bld (BinaryLabelDataset): Validation dataset for threshold optimization
         test_bld (BinaryLabelDataset): Test dataset for final evaluation
         attribute (str): Name of the sensitive attribute being evaluated
-        model_name (str): Type of model to train ('lr', 'mlp', 'xgb', 'cat', 'lgbm', 'tabtransformer')
+        model_name (str): Type of model to train ('lr', 'mlp', 'xgb', 'cat', 'lgbm', 'tabtransformer', 'tabnet')
 
     Returns:
         tuple: (attribute_name, trained_model)
@@ -187,6 +244,7 @@ def wrapper_training(train_bld:BinaryLabelDataset,
         - 'mlp': Multi-layer Perceptron with adaptive learning
         - 'lgbm': LightGBM Gradient Boosted Trees (CPU)
         - 'tabtransformer': TabTransformer with attention mechanism for tabular data
+        - 'tabnet': TabNet with PyTorch backend
 
     Example:
         >>> result = wrapper_training(train_bld, val_bld, test_bld, 'gender', 'lr')
@@ -204,24 +262,36 @@ def wrapper_training(train_bld:BinaryLabelDataset,
             model = model.fit(x_train, y_train, sample_weight=train_bld.instance_weights)
 
         elif model_name == 'cat':
-            model = CatBoostClassifier(
-                eval_metric='Accuracy',
-                depth=4,
-                learning_rate=0.01,
-                iterations=10,
-                thread_count=1,  # Single thread per worker to avoid oversubscription
-                verbose=False)
+            cat_params = {
+                'eval_metric': 'Accuracy',
+                'depth': 4,
+                'learning_rate': 0.01,
+                'iterations': 10,
+                'thread_count': 1,  # Single thread per worker to avoid oversubscription
+                'verbose': False
+            }
+            if _is_gpu_available():
+                cat_params['task_type'] = 'GPU'
+                
+            model = CatBoostClassifier(**cat_params)
             model = model.fit(x_train, y_train)
 
         elif model_name == 'xgb':
-            model =  XGBClassifier(
-                max_depth=8,
-                learning_rate=0.01,
-                gamma = 0.25,
-                n_estimators = 500,
-                subsample = 0.8,
-                colsample_bytree = 0.3,
-                n_jobs=1)  # Use single thread per model to avoid conflicts with threading
+            xgb_params = {
+                'max_depth': 8,
+                'learning_rate': 0.01,
+                'gamma': 0.25,
+                'n_estimators': 500,
+                'subsample': 0.8,
+                'colsample_bytree': 0.3,
+                'n_jobs': 1  # Use single thread per model to avoid conflicts with threading
+            }
+
+            # Always run XGBoost on CPU; do not set any GPU-specific parameters
+            # Use histogram-based algorithm on CPU for good performance
+            xgb_params['tree_method'] = 'hist'
+
+            model =  XGBClassifier(**xgb_params)
             model = model.fit(x_train, y_train)
 
         elif model_name == 'mlp':
@@ -267,16 +337,28 @@ def wrapper_training(train_bld:BinaryLabelDataset,
             feature_names = [f'feature_{i}' for i in range(x_train.shape[1])]
             x_train_df = pd.DataFrame(x_train, columns=feature_names)
 
-            model = LGBMClassifier(
-                n_estimators=500,
-                learning_rate=0.05,
-                num_leaves=31,
-                subsample=0.8,
-                colsample_bytree=0.8,
-                objective='binary',
-                n_jobs=1,
-                verbose=-1
-            )
+            # Base configuration for CPU runs (moderate capacity)
+            lgbm_params = {
+                'n_estimators': 500,
+                'learning_rate': 0.05,
+                'num_leaves': 31,
+                'subsample': 0.8,
+                'colsample_bytree': 0.8,
+                'objective': 'binary',
+                'n_jobs': -1,
+                'verbose': -1
+            }
+            if _is_gpu_available():
+                # When a GPU is present, use a larger, more expressive setup that
+                # can leverage the additional memory and parallelism.
+                lgbm_params.update({
+                    'device': 'gpu',
+                    'n_estimators': 2000,
+                    'num_leaves': 127,
+                    'max_bin': 511,
+                })
+
+            model = LGBMClassifier(**lgbm_params)
             model = model.fit(x_train_df, y_train, sample_weight=train_bld.instance_weights)
             # Store feature names on the model so we can reuse them at prediction time
             model._cmf_feature_names = feature_names
@@ -296,7 +378,7 @@ def wrapper_training(train_bld:BinaryLabelDataset,
 
             # Minimal config tuned for bias search runs; TabTransformer handles internal optimization
             config = {
-                "batch_size": 1024,
+                "batch_size": 2048,
                 "epochs": 20,
                 "learning_rate": 1e-3,
                 "verbose": 0
@@ -310,7 +392,23 @@ def wrapper_training(train_bld:BinaryLabelDataset,
             model._cmf_target_name = 'target'
             # Expose classes_ to align with sklearn-style API (binary case: {0,1})
             model.classes_ = np.array([0, 1])
-        
+
+        elif model_name == 'tabnet':
+            if TabNetClassifier is None:
+                raise ImportError("TabNetClassifier not available. Please install 'pytorch-tabnet' to use 'tabnet'.")
+            # TabNet works directly on numpy arrays; use a small, single-threaded config
+            tabnet_params = {'seed': 42, 'verbose': 0}
+            if _is_gpu_available():
+                tabnet_params['device_name'] = 'cuda'
+            else:
+                tabnet_params['device_name'] = 'cpu'
+                
+            model = TabNetClassifier(**tabnet_params)
+            model.fit(
+                x_train,
+                y_train,
+            )
+
         # Clean up training data to free memory
         del x_train, y_train, scaler
         
@@ -702,37 +800,47 @@ class BaseSearch:
         best_idx = np.where(balanced_acc == np.max(balanced_acc))[0][0]
         best_class_thresh = class_threshold[best_idx]
 
+        # Evaluate metrics on test set at the best validation threshold
         test_bld_pred = test_bld.copy(deepcopy=True)
         test_bld_pred.scores = proba_test[:, pos_idx].reshape(-1, 1)
 
-        for thresh in class_threshold:
+        fav_idx = test_bld_pred.scores > best_class_thresh
+        test_bld_pred.labels[fav_idx] = test_bld_pred.favorable_label
+        test_bld_pred.labels[~fav_idx] = test_bld_pred.unfavorable_label
 
-            fav_idx = test_bld_pred.scores > thresh
-            test_bld_pred.labels[fav_idx] = test_bld_pred.favorable_label
-            test_bld_pred.labels[~fav_idx] = test_bld_pred.unfavorable_label
+        classification_metric_orig_test = ClassificationMetric(
+            test_bld,
+            test_bld_pred,
+            unprivileged_groups=unprivileged_group,
+            privileged_groups=privileged_group
+        )
 
-            classification_metric_orig_test = ClassificationMetric(test_bld,
-                                                                test_bld_pred,
-                                                                unprivileged_groups=unprivileged_group,
-                                                                privileged_groups=privileged_group)
+        spd = classification_metric_orig_test.statistical_parity_difference()
+        disparate_impact = classification_metric_orig_test.disparate_impact()
+        eq_opp_diff = classification_metric_orig_test.equal_opportunity_difference()
 
-            spd = classification_metric_orig_test.statistical_parity_difference()
-            disparate_impact = classification_metric_orig_test.disparate_impact()
-            eq_opp_diff = classification_metric_orig_test.equal_opportunity_difference()
-            
-            # Handle potential errors in avg_odd_diff calculation due to exploding FPR/TPR
-            try:
-                avg_odd_diff = classification_metric_orig_test.average_odds_difference()
-            except (ValueError, ZeroDivisionError, RuntimeError) as e:
-                # Set worst possible value for avg_odd_diff when calculation fails
-                # This indicates maximum unfairness (far from optimal value of 0.0)
-                avg_odd_diff = 1.0
-                print(f"Warning: avg_odd_diff calculation failed in grid search, using worst-case value 1.0. Error: {e}")
-            
-            theil_idx = classification_metric_orig_test.theil_index()
+        # Handle potential errors in avg_odd_diff calculation due to exploding FPR/TPR
+        try:
+            avg_odd_diff = classification_metric_orig_test.average_odds_difference()
+        except (ValueError, ZeroDivisionError, RuntimeError) as e:
+            # Worst-case value indicates maximum unfairness
+            avg_odd_diff = 1.0
+            print(
+                f"Warning: avg_odd_diff calculation failed at best threshold; using 1.0. Error: {e}"
+            )
 
-            if thresh == best_class_thresh:
-                return calculate_fairness_score(eq_opp_diff, avg_odd_diff, spd, disparate_impact, theil_idx)
+        theil_idx = classification_metric_orig_test.theil_index()
+        balanced_accuracy = 0.5 * (
+            classification_metric_orig_test.true_positive_rate() +
+            classification_metric_orig_test.true_negative_rate()
+        )
+
+        score_dict = calculate_fairness_score(
+            eq_opp_diff, avg_odd_diff, spd, disparate_impact, theil_idx
+        )
+        # Attach balanced accuracy for downstream aggregation
+        score_dict['balanced_accuracy'] = float(balanced_accuracy)
+        return score_dict
 
 
     def evaluate_attribute(self, 
@@ -782,7 +890,22 @@ class BaseSearch:
             # TabTransformer and Keras-based MLP should run sequentially to
             # allow their internal optimization and avoid TF + multiprocessing
             # issues. Other models can use parallel execution when beneficial.
-            if iterate > 1 and n_threads > 1 and model_name not in ('tabtransformer', 'mlp'):
+            # Determine execution mode based on GPU availability and model type
+            gpu_available = _is_gpu_available()
+            # Models that support GPU acceleration
+            gpu_models = {'tabtransformer', 'mlp', 'tabnet', 'xgb', 'cat', 'lgbm'}
+            
+            should_run_parallel = False
+            if iterate > 1 and n_threads > 1:
+                if gpu_available and model_name in gpu_models:
+                    # Force sequential execution for GPU models when GPU is available
+                    # to avoid OOM and resource contention
+                    should_run_parallel = False
+                else:
+                    # Run in parallel if no GPU or if model is CPU-only (or GPU not available)
+                    should_run_parallel = True
+
+            if should_run_parallel:
                 local_backend = self.backend
 
                 if local_backend == 'process':
@@ -870,6 +993,9 @@ class BaseSearch:
             fair_results_dic = self.__predict_attribute_bias(train_bld, val_bld, test_bld, model, attribute)
             att_dic[f'{attribute}_raw'] += fair_results_dic['raw_score']
             att_dic[f'{attribute}_overall'] += fair_results_dic['overall_score']
+            # Aggregate balanced accuracy
+            if 'balanced_accuracy' in fair_results_dic:
+                att_dic[f'{attribute}_balanced_acc'] += fair_results_dic['balanced_accuracy']
             
             # Clean up model to free memory
             del model
@@ -881,6 +1007,8 @@ class BaseSearch:
         # Calculate averages
         att_dic[f'{attribute}_raw'] = att_dic[f'{attribute}_raw'] / iterate
         att_dic[f'{attribute}_overall'] = att_dic[f'{attribute}_overall'] / iterate
+        if f'{attribute}_balanced_acc' in att_dic:
+            att_dic[f'{attribute}_balanced_acc'] = att_dic[f'{attribute}_balanced_acc'] / iterate
 
         # Final cleanup
         del wrp_out

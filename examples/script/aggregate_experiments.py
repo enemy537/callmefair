@@ -56,6 +56,8 @@ def _infer_model_type(clean_name: str) -> str:
         return "nn"
     if n in {"tabnetclassifier"}:
         return "tabnet"
+    if n in {"tabtransformer"}:
+        return "nn"
     # In-processing recognizers (AIF360 & others)
     if n in {"adversarialdebiasing", "metafairclassifier", "exponentiatedgradient"}:
         return "in_processing"
@@ -63,6 +65,25 @@ def _infer_model_type(clean_name: str) -> str:
     if n in {"calibratedequalizedodds", "equalizedodds", "roc"}:
         return "post_processing"
     return "other"
+
+
+def _canonical_model_key(clean_name: str) -> str:
+    """Map cleaned class names to the canonical model keys used by hfgsearch.
+
+    Canonical keys: lr, mlp, xgb, cat, lgbm, tabnet, tabtransformer.
+    Unknowns fall back to the lowercase cleaned name.
+    """
+    n = clean_name.lower()
+    mapping = {
+        "logisticregression": "lr",
+        "mlpclassifier": "mlp",
+        "xgbclassifier": "xgb",
+        "catboostclassifier": "cat",
+        "lgbmclassifier": "lgbm",
+        "tabnetclassifier": "tabnet",
+        "tabtransformer": "tabtransformer",
+    }
+    return mapping.get(n, n)
 
 
 def aggregate_results(
@@ -147,6 +168,8 @@ def aggregate_results(
     combined["model_raw"] = combined["model"].astype(str)
     combined["model"] = combined["model_raw"].apply(_clean_model_name)
     combined["model_type"] = combined["model"].apply(_infer_model_type)
+    # Add canonical model key column to match hfgsearch model selection
+    combined["model_key"] = combined["model"].apply(_canonical_model_key)
     if not include_raw_model:
         combined.drop(columns=["model_raw"], inplace=True)
 
@@ -198,7 +221,7 @@ def main():
     if args.print_canonical_preview:
         try:
             df = pd.read_csv(args.output)
-            cols = [c for c in ["model_raw", "model", "model_type", "BM"] if c in df.columns]
+            cols = [c for c in ["model_raw", "model", "model_key", "model_type", "BM"] if c in df.columns]
             preview = df[cols].head(20)
             print("Canonicalization preview:\n", preview)
         except Exception as e:

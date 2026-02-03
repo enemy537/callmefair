@@ -28,7 +28,6 @@ from callmefair.search._search_base import BaseSearch, combine_attributes, CType
 import pandas as pd
 # Fancy table print
 from prettytable import PrettyTable
-from multiprocessing import Pool
 from itertools import combinations as combine
 # Suppress FutureWarning messages
 import warnings
@@ -140,7 +139,7 @@ class BiasSearch(BaseSearch):
                 # Re-raise to let callers handle or see the full error
                 raise
         
-        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Privileged N','Unprivileged N']]
+        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Balanced Accuracy','Privileged N','Unprivileged N']]
 
         for att_, list_ in zip(self.attribute_names, att_dict_list):
             name_raw = f'{att_}_raw'
@@ -148,13 +147,15 @@ class BiasSearch(BaseSearch):
             # Count samples per group in the full dataset
             privileged_n = int((self.df[att_] == 1).sum())
             unprivileged_n = int((self.df[att_] == 0).sum())
-            table.append([att_, list_[name_raw], list_[name_overall], privileged_n, unprivileged_n])
+            name_bal = f'{att_}_balanced_acc'
+            bal_acc = list_.get(name_bal, None)
+            table.append([att_, list_[name_raw], list_[name_overall], bal_acc, privileged_n, unprivileged_n])
 
         printable = pretty_print(table)
         return table, printable
     
 
-    def evaluate_combinations(self, treat_umbalance=False, iterate=10, model_name:str = 'lr'):
+    def evaluate_combinations(self, treat_umbalance=False, iterate=10, model_name: str = 'lgbm'):
         """
         Evaluate bias for all 2-way and 3-way attribute combinations.
         
@@ -216,7 +217,7 @@ class BiasSearch(BaseSearch):
         combinations_2 = list(combine(self.attribute_names, 2))
         combinations_3 = list(combine(self.attribute_names, 3))
 
-        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Privileged N','Unprivileged N']] 
+        table = [['Attribute','Raw Fairness Score','Normalized Fairness score','Balanced Accuracy','Privileged N','Unprivileged N']] 
         skipped_combinations = []
 
         for col_1, col_2 in combinations_2:
@@ -230,13 +231,15 @@ class BiasSearch(BaseSearch):
                 continue
             
             try:
-                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new=tmp_df)
                 name_raw = f'{attribute}_raw'
                 name_overall = f'{attribute}_overall'
+                name_bal = f'{attribute}_balanced_acc'
                 # Count samples per group
                 privileged_n = int((tmp_df[attribute] == 1).sum())
                 unprivileged_n = int((tmp_df[attribute] == 0).sum())
-                table.append([attribute, att_dic[name_raw], att_dic[name_overall], privileged_n, unprivileged_n])
+                bal_acc = att_dic.get(name_bal, None)
+                table.append([attribute, att_dic[name_raw], att_dic[name_overall], bal_acc, privileged_n, unprivileged_n])
             except ValueError as e:
                 if "least populated class" in str(e):
                     skipped_combinations.append(attribute)
@@ -256,13 +259,14 @@ class BiasSearch(BaseSearch):
                 continue
 
             try:
-                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new = tmp_df)
+                att_dic = self.evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new=tmp_df)
                 name_raw = f'{attribute}_raw'
                 name_overall = f'{attribute}_overall'
-                # Count samples per group
+                name_bal = f'{attribute}_balanced_acc'
                 privileged_n = int((tmp_df[attribute] == 1).sum())
                 unprivileged_n = int((tmp_df[attribute] == 0).sum())
-                table.append([attribute, att_dic[name_raw], att_dic[name_overall], privileged_n, unprivileged_n])
+                bal_acc = att_dic.get(name_bal, None)
+                table.append([attribute, att_dic[name_raw], att_dic[name_overall], bal_acc, privileged_n, unprivileged_n])
             except ValueError as e:
                 if "least populated class" in str(e):
                     skipped_combinations.append(attribute)

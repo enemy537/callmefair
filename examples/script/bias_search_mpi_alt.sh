@@ -75,7 +75,7 @@ export OMP_PLACES=cores
 DATASET=${DATASET:-"callmefair/examples/data/diabetes_pre/diabetes.csv"}
 LABEL=${LABEL:-"readmitted"}
 ATTRIBUTES=${ATTRIBUTES:-"age,gender,race"}
-MODELS=${MODELS:-"lr,mlp,xgb,cat,lgbm,tabtransformer"}
+MODELS=${MODELS:-"lr,mlp,xgb,cat,rf"}  # Added random forest for more models
 ITERATIONS=${ITERATIONS:-20}
 OUTPUT_DIR=${OUTPUT_DIR:-"./mpi_results_alt_$SLURM_JOB_ID"}
 

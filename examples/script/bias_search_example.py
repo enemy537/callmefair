@@ -1,6 +1,6 @@
 import os
 import argparse
-from random import random
+import random
 import sys
 import pandas as pd
 import numpy as np
@@ -249,20 +249,20 @@ def main():
                         help="Label column name. Defaults to 'readmitted' for diabetes.")
     parser.add_argument("--attributes", type=str, default=None,
                         help="Comma-separated sensitive attributes. Defaults to 'age,gender,race'.")
-    parser.add_argument("--models", type=str, default="lr,mlp,xgb,cat,lgbm,tabtransformer",
-                        help="Comma-separated models to evaluate (lr, mlp, xgb, cat, lgbm, tabtransformer).")
+    parser.add_argument("--models", type=str, default="tabtransformer,lr,mlp,xgb,cat,lgbm,tabnet",
+                        help="Comma-separated models to evaluate (tabtransformer, lr, mlp, xgb, cat, lgbm, tabnet).")
     parser.add_argument("--iterations", type=int, default=10,
                         help="Number of iterations for evaluation (default: 10).")
     parser.add_argument("--n_threads", type=int, default=16,
                         help="Parallel workers for training (default: 16).")
     parser.add_argument("--output_dir", type=str, default=None,
-                        help="Directory to save PNG outputs. Defaults to examples/script/")
+                        help="Directory to save PNG outputs. Defaults to this script's directory.")
     parser.add_argument("--combination", type=str, default=None,
                         help="Attribute pair for combination average as 'attr1,attr2' (optional).")
     parser.add_argument("--combination_model", type=str, default="lr",
                         help="Model to use for combination average (default: lr).")
-    parser.add_argument("--combinations_model", type=str, default="lr",
-                        help="Model to use for evaluate_combinations (default: lr).")
+    parser.add_argument("--combinations_model", type=str, default="lgbm",
+                        help="Model to use for evaluate_combinations (default: lgbm).")
     parser.add_argument("--log_file", type=str, default=None,
                         help="Redirect all prints to a log file path (optional).")
 
@@ -317,7 +317,7 @@ def main():
     
     
     # Process both datasets
-    attributes_rows  = results[random.choice(results.keys())][0]
+    attributes_rows  = results[random.choice(list(results.keys()))][0]
     combos_rows = comb_table
 
     group1 = process_array(attributes_rows, '#1f77b4')  # Blue
