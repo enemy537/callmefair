@@ -135,83 +135,54 @@ def _is_gpu_available():
         
     return False
 
-def combine_attributes(df, cols, operation: CType):
+def combine_attributes(df, col1, col2, operation: CType):
     """
-    Combine multiple binary columns in a DataFrame using a specified set operation.
+    Combines two binary columns in a DataFrame using a specified set operation,
+    replacing the original columns with a single combined column.
+
+    This function creates composite protected groups by combining two binary
+    sensitive attributes using set operations. The resulting combined attribute
+    can be used for more sophisticated bias analysis.
 
     Parameters:
         df (pd.DataFrame): Input DataFrame containing the binary columns
-        cols (list[str]): List of column names to combine (must be present in df)
-        operation (CType): Set operation to apply:
-            - CType.union: logical OR across all cols
-            - CType.intersection: logical AND across all cols
-            - CType.difference_1_minus_2: first_col AND NOT (OR of remaining cols)
-            - CType.difference_2_minus_1: last_col AND NOT (OR of remaining cols)
-            - CType.symmetric_difference: XOR (parity) across all cols
+        col1 (str): Name of the first binary column (e.g., 'gender')
+        col2 (str): Name of the second binary column (e.g., 'race')
+        operation (CType): Set operation to apply ('union', 'intersection', 
+                          'difference_1_minus_2', 'difference_2_minus_1', 
+                          'symmetric_difference')
 
     Returns:
-        pd.DataFrame: New DataFrame with original columns removed and a single combined column
-                      named by joining the original names with underscores.
+        pd.DataFrame: New DataFrame with original columns replaced by combined column
+
+    Raises:
+        ValueError: If columns are not binary (contain values other than 0 or 1)
+
+    Example:
+        >>> df = pd.DataFrame({'gender': [1, 0, 1, 0], 'race': [1, 1, 0, 0]})
+        >>> result = combine_attributes(df, 'gender', 'race', CType.intersection)
+        >>> print(result.columns)
+        ['gender_race']
     """
-    import functools
-    import operator
+    # Check if columns are binary (0 or 1)
+    if not all(df[col].isin([0, 1]).all() for col in [col1, col2]):
+        raise ValueError("Columns must contain only binary values (0 or 1).")
 
-    # Normalize cols input
-    if not isinstance(cols, (list, tuple)) or len(cols) == 0:
-        raise ValueError("`cols` must be a non-empty list or tuple of column names.")
+    # Compute the combined column based on the operation
+    if operation == CType.union:                   # and
+        combined = df[col1] | df[col2]
+    elif operation == CType.intersection:          # or
+        combined = df[col1] & df[col2]
+    elif operation == CType.difference_1_minus_2:  # col1 - col2
+        combined = df[col1] & ~df[col2]
+    elif operation == CType.difference_2_minus_1:  # col2 - col1
+        combined = df[col2] & ~df[col1]
+    elif operation == CType.symmetric_difference:  # xor
+        combined = df[col1] ^ df[col2]
 
-    cols = list(cols)
-
-    # Ensure all columns exist
-    missing = [c for c in cols if c not in df.columns]
-    if missing:
-        raise KeyError(f"Columns not found in DataFrame: {missing}")
-
-    # If only one column provided, rename to combined name (still drop original and re-add)
-    new_col_name = "_".join(cols)
-
-    # Validate binary values (allow ints 0/1 or booleans)
-    for c in cols:
-        # allow bool dtype or numeric 0/1 only
-        series = df[c]
-        unique_vals = set(series.dropna().unique())
-        allowed = {0, 1, False, True}
-        if not unique_vals.issubset(allowed):
-            raise ValueError(f"Column '{c}' must contain only binary values (0/1 or booleans). Found: {unique_vals}")
-
-    # Compute combined column based on operation
-    if len(cols) == 1:
-        combined = df[cols[0]].astype(int)
-    else:
-        if operation == CType.union:
-            # logical OR across all columns
-            combined_bool = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols))
-            combined = combined_bool.astype(int)
-        elif operation == CType.intersection:
-            # logical AND across all columns
-            combined_bool = functools.reduce(operator.and_, (df[c].astype(bool) for c in cols))
-            combined = combined_bool.astype(int)
-        elif operation == CType.symmetric_difference:
-            # parity XOR across all columns
-            combined_bool = functools.reduce(operator.xor, (df[c].astype(bool) for c in cols))
-            combined = combined_bool.astype(int)
-        elif operation == CType.difference_1_minus_2:
-            # first_col AND NOT (OR of remaining)
-            first = df[cols[0]].astype(bool)
-            others_or = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols[1:]))
-            combined_bool = first & (~others_or)
-            combined = combined_bool.astype(int)
-        elif operation == CType.difference_2_minus_1:
-            # last_col AND NOT (OR of others)
-            last = df[cols[-1]].astype(bool)
-            others_or = functools.reduce(operator.or_, (df[c].astype(bool) for c in cols[:-1]))
-            combined_bool = last & (~others_or)
-            combined = combined_bool.astype(int)
-        else:
-            raise ValueError(f"Unsupported operation: {operation}")
-
-    # Build new DataFrame: drop original columns and add combined column
-    df_new = df.drop(columns=cols, errors=False).assign(**{new_col_name: combined})
+    # Create a new DataFrame, dropping original columns and adding the combined column
+    new_col_name = f"{col1}_{col2}"
+    df_new = df.drop([col1, col2], axis=1).assign(**{new_col_name: combined})
 
     return df_new
 
