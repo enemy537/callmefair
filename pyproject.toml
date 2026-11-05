@@ -23,7 +23,7 @@ dependencies = [
     "aif360[Reductions,inFairness]>=0.6.1,<0.7",
     # Required at runtime by aif360 DisparateImpactRemover (BMType.preDisparate).
     "BlackBoxAuditing>=0.1.54",
-    "matplotlib>=3.8,<3.9",
+    "matplotlib>=3.8,<3.11",
     "seaborn>=0.13,<0.14",
     "prettytable>=3.9,<4",
     "tqdm>=4.66,<5",
