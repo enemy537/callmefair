@@ -32,10 +32,11 @@ To install and use FairHealthGrid, follow these steps:
 
 ### 1. Installation
 
-You can install the package directly from PyPI:
+Requires Python 3.11+. With [uv](https://docs.astral.sh/uv/):
 ```bash
-pip install callmefair
+uv pip install "callmefair[dl]"   # core + TensorFlow/PyTorch models
 ```
+On macOS run `brew install libomp` first; for Linux + CUDA and other options see [INSTALLATION.md](INSTALLATION.md).
 
 ### 2. Documentation
 

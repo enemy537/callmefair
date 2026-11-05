@@ -4,29 +4,27 @@ build-backend = "hatchling.build"
 
 [project]
 name = "callmefair"
-version = "0.0.1"
+dynamic = ["version"]
 authors = [
   { name="Pedro Paiva", email="pedro.paiva1@ucalgary.ca" },
 ]
 description = "A comprehensive framework for automatic bias mitigation in AI systems"
 readme = "README.md"
 requires-python = ">=3.11"
-dependecies = [
-    'scikit-learn',
-    'matplotlib',
-    'seaborn',
-    'pandas',
-    'numpy',
-    'aif360[Reductions, inFairness]',
-    'xgboost',
-    'catboost',
-    'BlackBoxAuditing',
-    'imblearn',
-    'tqdm',
-    'prettytable',
-    'tensorflow',
-    'shapely',
-    'pytorch-tabnet'
+dependencies = [
+    "numpy>=1.26,<2.1",
+    "scipy>=1.11.4,<1.14",
+    "pandas>=2.2,<2.3",
+    "scikit-learn>=1.6,<1.7",
+    "imbalanced-learn>=0.12",
+    "xgboost>=1.7.6,<2.1",
+    "lightgbm>=4.2,<5",
+    "catboost>=1.2,<1.3",
+    "aif360[Reductions,inFairness]>=0.6.1,<0.7",
+    "matplotlib>=3.8,<3.9",
+    "seaborn>=0.13,<0.14",
+    "prettytable>=3.9,<4",
+    "tqdm>=4.66,<5",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -35,6 +33,51 @@ classifiers = [
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
+[project.optional-dependencies]
+# Deep-learning models (TabTransformer, MLP, AdversarialDebiasing, TabNet).
+# On Linux+CUDA install torch from the PyTorch index first (see INSTALLATION.md).
+dl = [
+    "tensorflow>=2.16,<2.18",
+    "torch>=2.2,<2.3",
+    "pytorch-tabnet>=4.0,<5",
+    "einops>=0.7,<0.8",
+]
+# Apple GPU for TensorFlow. Optional: small tabular models are often as fast on CPU.
+mac = [
+    "tensorflow-metal>=1.1; sys_platform == 'darwin' and platform_machine == 'arm64'",
+]
+# Linux + NVIDIA GPU for TensorFlow.
+cuda = [
+    "tensorflow[and-cuda]>=2.16,<2.18; sys_platform == 'linux'",
+]
+# Dependencies for examples/ and notebooks.
+examples = [
+    "shapely>=2.0,<2.1",
+    "plotly>=5.19,<6",
+    "kaleido>=0.2.1,<0.3",
+    "statsmodels",
+    "more-itertools",
+    "threadpoolctl>=3.1,<3.5",
+]
+dev = [
+    "callmefair[dl,examples]",
+    "pytest",
+    "jupyter",
+    "ipykernel",
+]
+
 [project.urls]
 Homepage = "https://github.com/uofc-ai2lab/callmefair/"
 Issues = "https://github.com/uofc-ai2lab/callmefair/issues"
+
+[tool.hatch.version]
+path = "callmefair/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["callmefair"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/callmefair", "/tests", "/README.md", "/LICENSE", "/pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

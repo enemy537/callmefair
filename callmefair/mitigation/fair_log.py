@@ -129,8 +129,9 @@ class csvLogger:
             >>> ]
             >>> logger(results)
         """
-        df = pd.DataFrame(named_dict)
-        df.to_csv(f"./{self.path}/{self.filename}.csv", mode='a')
+        target = os.path.join(self.path, f"{self.filename}.csv")
+        pd.DataFrame(named_dict).to_csv(target, mode='a', index=False,
+                                        header=not os.path.exists(target))
 
 
 def read_csv_file(file_path: str) -> pd.DataFrame:
@@ -160,7 +161,7 @@ def read_csv_file(file_path: str) -> pd.DataFrame:
     
 
 def aggregate_csv_files(folder_path: str, output_file: str = 'aggregated_data.csv', 
-                       num_processes: int = 10) -> None:
+                       num_processes: int = 10, delete_sources: bool = True) -> None:
     """
     Aggregate multiple CSV files from a folder into a single CSV file using multiprocessing.
     
@@ -173,13 +174,17 @@ def aggregate_csv_files(folder_path: str, output_file: str = 'aggregated_data.cs
     2. Reads them in parallel using multiprocessing
     3. Combines all DataFrames into a single DataFrame
     4. Saves the aggregated data to the output file
-    5. Optionally deletes the original files after successful aggregation
+    5. Deletes the source files after a successful aggregation (``delete_sources``)
     
     Args:
         folder_path (str): Path to the folder containing CSV files to aggregate
         output_file (str): Name of the output CSV file. Defaults to 'aggregated_data.csv'
         num_processes (int): Number of processes to use for parallel processing.
             Defaults to 10. Use None to use all available CPU cores.
+        delete_sources (bool): Remove the source CSVs after a successful
+            aggregation. Defaults to True (historical behaviour); pass False to
+            keep them. If ``output_file`` lives inside ``folder_path`` it is
+            never deleted.
             
     Raises:
         Exception: If aggregation fails due to file system or processing errors
@@ -243,8 +248,9 @@ def aggregate_csv_files(folder_path: str, output_file: str = 'aggregated_data.cs
         # logger.info(f"Removed {dropped_rows} duplicate rows")
         logger.info(f"Final dataset has {len(combined_df)} rows")
         
-        # Delete original CSV files
-        for file_path in csv_files:
+        for file_path in (csv_files if delete_sources else []):
+            if os.path.abspath(file_path) == os.path.abspath(output_file):
+                continue
             try:
                 os.remove(file_path)
                 logger.debug(f"Deleted: {file_path}")
@@ -254,12 +260,3 @@ def aggregate_csv_files(folder_path: str, output_file: str = 'aggregated_data.cs
     except Exception as e:
         logger.error(f"Error during aggregation: {str(e)}")
         raise
-
-if __name__ == '__main__':
-    # Example usage
-    folder_path = './results/'
-    output_file = './results/aggregated_data.csv'
-    aggregate_csv_files(folder_path, output_file)
-
-
-

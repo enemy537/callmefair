@@ -1,37 +1,32 @@
-# Base image aligned with package requirement (Python >=3.11)
+# CPU image. Python >=3.11 as required by the package.
 FROM python:3.11-slim
 
-# Prevent Python from buffering stdout/stderr
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    UV_SYSTEM_PYTHON=1 \
+    UV_NO_CACHE=1
 
-# Install system dependencies required by some Python packages
-# - libgomp1: needed by xgboost and some numerical libraries
-# - graphviz: used by catboost (optional), harmless if not used
-# - build-essential: for any wheels needing compilation
-# - git: in case users install extras from repos
+# libgomp1: OpenMP runtime for xgboost/lightgbm; graphviz: optional, for catboost plots
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    git \
     libgomp1 \
     graphviz \
     && rm -rf /var/lib/apt/lists/*
 
-# Create working directory
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 WORKDIR /app
 
-# Upgrade pip tooling
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# CPU-only torch (the default Linux wheel bundles CUDA libraries, ~2 GB larger)
+RUN uv pip install "torch>=2.2,<2.3" --index-url https://download.pytorch.org/whl/cpu
 
-# Install Python dependencies first to leverage Docker layer caching
+# Install dependencies first for layer caching
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install -r requirements.txt
 
-# Copy the source and install the package
-COPY . ./
-RUN pip install --no-cache-dir .
+# Install the package itself (dependencies are already satisfied)
+COPY pyproject.toml README.md LICENSE ./
+COPY callmefair ./callmefair
+RUN uv pip install --no-deps .
 
-# Default workdir for users; they can mount a host folder here
+# Users mount their project here
 WORKDIR /workspace
-
-# By default, start a Python REPL; users can override with `docker run ... python script.py`
 CMD ["python"]

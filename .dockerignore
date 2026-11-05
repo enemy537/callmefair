@@ -42,3 +42,9 @@ figures/
 *.jpg
 *.jpeg
 *.gif
+
+# Not needed in the image
+.claude/
+examples/
+docs/
+tests/

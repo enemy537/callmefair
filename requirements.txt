@@ -1,40 +1,29 @@
-# Project dependencies (pinned to avoid version mismatches)
+# Full reproducible environment (mirrors pyproject.toml core + [dl] + [examples]).
+# Preferred: `uv pip install -e ".[dl]"`. See INSTALLATION.md for CUDA / Apple GPU extras.
 
-# Core scientific stack
+# Core
 numpy>=1.26,<2.1
 scipy>=1.11.4,<1.14
 pandas>=2.2,<2.3
-
-# Machine learning
-scikit-learn==1.6.1
-imblearn
-threadpoolctl>=3.1,<3.5
-joblib>=1.2,<1.5
-
-# Models
+scikit-learn>=1.6,<1.7
+imbalanced-learn>=0.12
 xgboost>=1.7.6,<2.1
-catboost>=1.2,<1.3
 lightgbm>=4.2,<5
-torch>=2.2,<2.3
-pytorch-tabnet>=4.0,<5
-
-# Visualization
+catboost>=1.2,<1.3
+aif360[Reductions,inFairness]>=0.6.1,<0.7
 matplotlib>=3.8,<3.9
 seaborn>=0.13,<0.14
-plotly>=5.19,<6
-kaleido>=0.2.1,<0.3
 prettytable>=3.9,<4
-
-# Fairness toolkits
-aif360>=0.6.1,<0.7
-
-# Utilities
 tqdm>=4.66,<5
-shapely>=2.0,<2.1
+
+# Deep learning ([dl])
+tensorflow>=2.16,<2.18
+torch>=2.2,<2.3
+pytorch-tabnet>=4.0,<5
 einops>=0.7,<0.8
 
-# Optional / legacy dependency:
-# BlackBoxAuditing is very old and often conflicts with modern stacks.
-# If you need it, install separately in an isolated env:
-#   pip install BlackBoxAuditing==0.1.35 --no-deps
-# BlackBoxAuditing
+# Examples ([examples])
+shapely>=2.0,<2.1
+plotly>=5.19,<6
+kaleido>=0.2.1,<0.3
+threadpoolctl>=3.1,<3.5

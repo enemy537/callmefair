@@ -40,11 +40,6 @@ from aif360.algorithms.inprocessing import AdversarialDebiasing, MetaFairClassif
 from aif360.algorithms.postprocessing.calibrated_eq_odds_postprocessing import CalibratedEqOddsPostprocessing
 from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.algorithms import Transformer
-# ML/Models
-try:
-    import tensorflow.compat.v1 as tf
-except ImportError:
-    tf = None
 
 from enum import Enum
 
@@ -259,23 +254,26 @@ class BMManager:
             
         Raises:
             ImportError: If TensorFlow is not available.
-            
+
+        The model owns a TF session; call :func:`release_model` when done with it.
+
         Example:
             >>> ad_model = bm_manager.in_AD(debias=True)
             >>> # Train the model with your data
             >>> ad_model.fit(train_data, train_labels)
         """
-        if tf is None:
-            raise ImportError("TensorFlow is required for Adversarial Debiasing")
-        
-        # AIF360's AdversarialDebiasing requires TF graph mode. Ensure eager is disabled.
+        # Imported lazily: TensorFlow is heavy and only needed here.
+        # NOTE (global side effect): AIF360's AdversarialDebiasing needs TF1 graph
+        # mode, so this disables eager execution for the WHOLE process. Keras /
+        # TabTransformer-style TF2 code used afterwards in the same process will
+        # break; run adversarial debiasing in its own process.
         try:
-            tf.compat.v1.disable_eager_execution()
-        except Exception:
-            # If eager is already disabled or TF version differs, proceed.
-            pass
+            import tensorflow.compat.v1 as tf
+        except ImportError as exc:
+            raise ImportError("TensorFlow is required for Adversarial Debiasing") from exc
 
-        sess = tf.compat.v1.Session()
+        tf.disable_eager_execution()
+        sess = tf.Session()
 
         ad = AdversarialDebiasing(privileged_groups=self.privileged_group,
                                     unprivileged_groups=self.unprivileged_group,
@@ -312,99 +310,59 @@ class BMManager:
         meta = MetaFairClassifier(tau=tau, sensitive_attr=sensitive_attribute, type="fdr")
         return meta
     
-    def __pos_abstract(self, pos_classifier: Transformer, valid_BLD_pred: BinaryLabelDataset,
-                        test_BLD_pred: BinaryLabelDataset) -> BinaryLabelDataset:
-        """
-        Abstract method for applying postprocessing bias mitigation.
-        
-        This is a helper method that provides common functionality for all
-        postprocessing techniques. It fits the postprocessing classifier on
-        validation data and predictions, then applies it to test predictions.
-        
-        Args:
-            pos_classifier (Transformer): The postprocessing classifier to apply
-            valid_BLD_pred (BinaryLabelDataset): Validation dataset with predictions
-            test_BLD_pred (BinaryLabelDataset): Test dataset with predictions
-                
-        Returns:
-            BinaryLabelDataset: Postprocessed test predictions
+    def _pos_apply(self, pos_classifier: Transformer, valid_BLD_pred: BinaryLabelDataset,
+                   test_BLD_pred: BinaryLabelDataset) -> tuple[BinaryLabelDataset, BinaryLabelDataset]:
+        """Fit on (validation ground truth, validation predictions); transform both predictions.
+
+        The ground-truth datasets held by ``bmI`` are never modified.
         """
         pos_classifier = pos_classifier.fit(self.bmI.get_val_BLD(), valid_BLD_pred)
-        test_pos_pred = pos_classifier.predict(test_BLD_pred)
-        self.bmI.pos_bm_set(test_pos_pred)
-        return test_pos_pred
+        return pos_classifier.predict(valid_BLD_pred), pos_classifier.predict(test_BLD_pred)
+
+    def _make_pos(self, bm_type: BMType) -> Transformer:
+        groups = dict(unprivileged_groups=self.unprivileged_group,
+                      privileged_groups=self.privileged_group)
+        if bm_type == BMType.posCalibrated:
+            return CalibratedEqOddsPostprocessing(cost_constraint="fpr", **groups)
+        if bm_type == BMType.posEqqOds:
+            return EqOddsPostprocessing(**groups)
+        if bm_type == BMType.posROC:
+            return RejectOptionClassification(**groups)
+        raise ValueError(f"{bm_type} is not a post-processing technique")
+
+    def pos_apply(self, bm_type: BMType, valid_BLD_pred: BinaryLabelDataset,
+                  test_BLD_pred: BinaryLabelDataset) -> tuple[BinaryLabelDataset, BinaryLabelDataset]:
+        """Apply one post-processor; return (validation, test) post-processed predictions.
+
+        Both outputs are returned so several post-processors can be chained.
+        ``*_BLD_pred`` must be prediction datasets (scores = P(favorable),
+        labels = thresholded decisions), not the ground-truth datasets.
+        """
+        return self._pos_apply(self._make_pos(bm_type), valid_BLD_pred, test_BLD_pred)
 
     def pos_CEO(self, valid_BLD_pred: BinaryLabelDataset, test_BLD_pred: BinaryLabelDataset) -> BinaryLabelDataset:
-        """
-        Apply Calibrated Equalized Odds (CEO) postprocessing bias mitigation.
-        
-        CEO is a postprocessing technique that adjusts model predictions to achieve
-        equalized odds while maintaining calibration. It ensures that the true
-        positive and false positive rates are equal across different groups.
-        
-        Args:
-            valid_BLD_pred (BinaryLabelDataset): Validation dataset with model predictions
-            test_BLD_pred (BinaryLabelDataset): Test dataset with model predictions
-                
-        Returns:
-            BinaryLabelDataset: Postprocessed test predictions with equalized odds
-            
-        Example:
-            >>> mitigated_predictions = bm_manager.pos_CEO(valid_pred, test_pred)
-            >>> # The predictions now satisfy equalized odds
-        """
-        cost_constraint = "fpr"
+        """Calibrated Equalized Odds post-processing (fpr cost constraint).
 
-        CEO = CalibratedEqOddsPostprocessing(unprivileged_groups=self.unprivileged_group,
-                                            privileged_groups=self.privileged_group,
-                                            cost_constraint=cost_constraint)
-        return self.__pos_abstract(CEO, valid_BLD_pred, test_BLD_pred)
+        Args:
+            valid_BLD_pred: Validation *predictions* (scores and thresholded labels).
+            test_BLD_pred: Test *predictions*.
+
+        Returns:
+            Post-processed test predictions.
+        """
+        return self.pos_apply(BMType.posCalibrated, valid_BLD_pred, test_BLD_pred)[1]
 
     def pos_EO(self, valid_BLD_pred: BinaryLabelDataset, test_BLD_pred: BinaryLabelDataset) -> BinaryLabelDataset:
-        """
-        Apply Equalized Odds (EO) postprocessing bias mitigation.
-        
-        EO is a postprocessing technique that adjusts model predictions to achieve
-        equalized odds. It ensures that the true positive and false positive rates
-        are equal across different groups, without considering calibration.
-        
-        Args:
-            valid_BLD_pred (BinaryLabelDataset): Validation dataset with model predictions
-            test_BLD_pred (BinaryLabelDataset): Test dataset with model predictions
-                
-        Returns:
-            BinaryLabelDataset: Postprocessed test predictions with equalized odds
-            
-        Example:
-            >>> mitigated_predictions = bm_manager.pos_EO(valid_pred, test_pred)
-            >>> # The predictions now satisfy equalized odds
-        """
-        EO = EqOddsPostprocessing(unprivileged_groups=self.unprivileged_group, 
-                                 privileged_groups=self.privileged_group)
-        
-        return self.__pos_abstract(EO, valid_BLD_pred, test_BLD_pred)
+        """Equalized Odds post-processing. Arguments and return as in :meth:`pos_CEO`."""
+        return self.pos_apply(BMType.posEqqOds, valid_BLD_pred, test_BLD_pred)[1]
 
     def pos_ROC(self, valid_BLD_pred: BinaryLabelDataset, test_BLD_pred: BinaryLabelDataset) -> BinaryLabelDataset:
-        """
-        Apply Reject Option Classification (ROC) postprocessing bias mitigation.
-        
-        ROC is a postprocessing technique that rejects predictions for instances
-        where the model is uncertain, particularly when this uncertainty is
-        correlated with the sensitive attribute. This helps reduce bias by
-        abstaining from making predictions on potentially unfair cases.
-        
-        Args:
-            valid_BLD_pred (BinaryLabelDataset): Validation dataset with model predictions
-            test_BLD_pred (BinaryLabelDataset): Test dataset with model predictions
-                
-        Returns:
-            BinaryLabelDataset: Postprocessed test predictions with reject option
-            
-        Example:
-            >>> mitigated_predictions = bm_manager.pos_ROC(valid_pred, test_pred)
-            >>> # Some predictions may be rejected to improve fairness
-        """
-        ROC = RejectOptionClassification(unprivileged_groups=self.unprivileged_group,
-                                         privileged_groups=self.privileged_group)
-        
-        return self.__pos_abstract(ROC, valid_BLD_pred, test_BLD_pred)
+        """Reject Option Classification post-processing. Arguments and return as in :meth:`pos_CEO`."""
+        return self.pos_apply(BMType.posROC, valid_BLD_pred, test_BLD_pred)[1]
+
+
+def release_model(model) -> None:
+    """Free resources held by an in-processing model (the TF session of AdversarialDebiasing)."""
+    sess = getattr(model, "sess", None)
+    if sess is not None:
+        sess.close()

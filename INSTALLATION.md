@@ -1,67 +1,81 @@
-# Installation Guide
+# Installation
 
-## Installing callmefair
+Requires **Python 3.11+**. Examples use [uv](https://docs.astral.sh/uv/); plain `pip` works the same way.
 
-`callmefair` is a comprehensive framework for automatic bias mitigation in AI systems. You can install it using pip.
-
-### Basic Installation
+## Quick start
 
 ```bash
-pip install callmefair
+uv venv --python 3.11 && source .venv/bin/activate
+uv pip install "callmefair[dl]"
 ```
 
-### Installation with Optional Dependencies
+The core install (no extras) covers scikit-learn, XGBoost, LightGBM, CatBoost and AIF360. The
+`dl` extra adds TensorFlow (TabTransformer, MLP, AdversarialDebiasing), PyTorch and TabNet.
 
-For full functionality including all bias mitigation algorithms and visualization tools:
+From a clone (development):
 
 ```bash
-pip install callmefair
+git clone https://github.com/uofc-ai2lab/callmefair.git && cd callmefair
+uv pip install -e ".[dev]"      # dl + examples + pytest + jupyter
+pytest tests/test_models.py
 ```
 
-### Development Installation
+## Extras
 
-If you want to install the latest development version from GitHub:
+| Extra | Contents |
+|-------|----------|
+| `dl` | tensorflow, torch, pytorch-tabnet, einops |
+| `mac` | tensorflow-metal (Apple GPU for TensorFlow, optional) |
+| `cuda` | tensorflow[and-cuda] (Linux) |
+| `examples` | shapely, plotly, kaleido, statsmodels, more-itertools, threadpoolctl |
+| `dev` | `dl` + `examples` + pytest, jupyter, ipykernel |
+
+`requirements.txt` mirrors core + `dl` + `examples` for a pinned-range environment.
+
+## macOS (Apple Silicon)
 
 ```bash
-pip install git+https://github.com/uofc-ai2lab/callmefair.git
+brew install libomp                  # required by LightGBM and XGBoost
+uv pip install "callmefair[dl]"
 ```
 
-### Requirements
+PyTorch (TabNet) uses the MPS GPU automatically. TensorFlow runs on CPU unless you add
+`uv pip install "callmefair[mac]"` (tensorflow-metal); it works with TensorFlow 2.17, but for small
+tabular models CPU is often just as fast.
 
-- Python 3.9 or higher
-- See `requirements.txt` for full dependency list
+## Linux + NVIDIA GPU
 
-### Dependencies
+Install PyTorch from the CUDA index first, then the rest:
 
-The package includes the following key dependencies:
+```bash
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install "callmefair[dl,cuda]"       # cuda = tensorflow[and-cuda]
+```
 
-- **Machine Learning**: scikit-learn, xgboost, catboost, tensorflow
-- **Fairness**: aif360, BlackBoxAuditing, pytorch-tabnet
-- **Data Processing**: pandas, numpy, imblearn
-- **Visualization**: matplotlib, seaborn
-- **Utilities**: tqdm, prettytable, shapely
+XGBoost and CatBoost are switched to GPU automatically when CUDA is detected.
 
-### Verification
+## Choosing the device
 
-After installation, you can verify the installation by running:
+Detection is automatic (CUDA, then MPS, then CPU). Override it with:
+
+```bash
+export CALLMEFAIR_DEVICE=cpu     # cuda | mps | cpu
+```
+
+## Verify
 
 ```python
 import callmefair
 print(callmefair.__version__)
 ```
 
-### Troubleshooting
+`import callmefair` is lightweight; TensorFlow and PyTorch load only when a class that needs them is used.
 
-If you encounter installation issues:
+## Docker
 
-1. **Upgrade pip**: `pip install --upgrade pip`
-2. **Install build tools**: `pip install build wheel setuptools`
-3. **Check Python version**: Ensure you're using Python 3.9+
+```bash
+docker build -t callmefair .
+docker run --rm -it -v "$PWD":/workspace callmefair python
+```
 
-### Examples
-
-See the `examples/` directory for comprehensive usage examples and tutorials.
-
-### Documentation
-
-For detailed documentation, visit: [https://callmefair.readthedocs.io/](https://callmefair.readthedocs.io/) 
+The image is CPU-only. Docs: https://callmefair.readthedocs.io/
