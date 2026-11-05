@@ -176,7 +176,30 @@ def test_parallel_workers_fit_with_one_thread(monkeypatch, stroke):
 def test_registry_contains_all_models():
     assert set(model_factory.MODEL_BUILDERS) == {"lr", "cat", "xgb", "mlp", "lgbm",
                                                  "tabtransformer", "tabnet"}
-    assert set(model_factory._USES_GPU) == set(model_factory.MODEL_BUILDERS)
+    for name in model_factory.MODEL_BUILDERS:
+        assert isinstance(model_factory.uses_gpu(name), bool)
+
+
+def test_custom_model_registration(monkeypatch):
+    """Regression: a model registered without a GPU entry raised KeyError in uses_gpu."""
+    monkeypatch.setattr(model_factory, "MODEL_BUILDERS", dict(model_factory.MODEL_BUILDERS))
+    monkeypatch.setattr(model_factory, "_USES_GPU", dict(model_factory._USES_GPU))
+
+    @model_factory.register_model("rf_test")
+    def _build(x, y, w, n_jobs):
+        from sklearn.ensemble import RandomForestClassifier
+        return model_factory.positive_proba(RandomForestClassifier(n_estimators=5).fit(x, y))
+
+    @model_factory.register_model("gpu_test", uses_gpu=lambda: True)
+    def _build_gpu(x, y, w, n_jobs):
+        raise NotImplementedError
+
+    assert model_factory.uses_gpu("rf_test") is False
+    assert model_factory.uses_gpu("gpu_test") is True
+    rng = np.random.default_rng(0)
+    x, y = rng.normal(size=(60, 3)), rng.integers(0, 2, 60)
+    proba = model_factory.fit_model("rf_test", x, y, np.ones(60))(x)
+    assert proba.shape == (60,)
 
 
 def test_unknown_model_is_rejected():

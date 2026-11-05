@@ -104,7 +104,7 @@ class BaseSearch:
 
         if parallel:
             results = self.optimizer.map(run_iteration, args_list)
-            mode = f"{self.n_threads} {self.backend}s"
+            mode = f"{self.n_threads} {'processes' if self.backend == 'process' else 'threads'}"
         else:
             results = (run_iteration(*args) for args in args_list)
             mode = "sequential"

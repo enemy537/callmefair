@@ -1,346 +1,168 @@
-Grid Search Guide
-================
+Grid Search
+===========
 
-This guide provides comprehensive information about using the grid search functionality
-in CallMeFair to systematically evaluate different combinations of bias mitigation techniques.
+:class:`callmefair.mitigation.fair_grid.BMGridSearch` evaluates combinations
+of bias-mitigation (BM) techniques for one model on one protected attribute
+and logs the metrics of each (see :doc:`/user_guide/quickstart`, :doc:`/api/mitigation`).
 
-Overview
---------
+How a combination runs
+----------------------
 
-The grid search functionality in CallMeFair allows you to systematically evaluate
-multiple combinations of bias mitigation techniques and compare their effectiveness.
-This is particularly useful for:
+Each :class:`callmefair.mitigation.fair_bm.BMType` belongs to one stage:
 
-* **Research**: Comparing different bias mitigation approaches
-* **Optimization**: Finding the best combination for your specific use case
-* **Reproducibility**: Ensuring systematic evaluation of all techniques
-* **Analysis**: Understanding trade-offs between different approaches
+- pre-processing: ``preReweighing``, ``preDisparate``, ``preLFR``
+- in-processing: ``inAdversarial``, ``inMeta``
+- post-processing: ``posCalibrated``, ``posEqqOds``, ``posROC``
 
-Key Features
------------
+A combination is applied as pre-processing (train split), then
+training, then post-processing (chained), each stage in list order. The
+``BM`` label joins the names (``preReweighing posROC``). Data is restored
+after every combination; the first row is always ``baseline``.
+``preReweighing`` weights reach any model whose ``fit`` accepts
+``sample_weight``; ``preDisparate`` needs ``BlackBoxAuditing``.
 
-.. list-table::
-   :widths: 30 70
-   :header-rows: 1
+Building ``bm_list`` and running
+--------------------------------
 
-   * - Feature
-     - Description
-   * - **Automatic Model Adaptation**
-     - Supports various ML frameworks (sklearn, XGBoost, TabNet)
-   * - **Comprehensive Evaluation**
-     - Evaluates baseline and all bias mitigation combinations
-   * - **Automatic Logging**
-     - Results automatically saved to CSV files
-   * - **Single Sensitive Attribute**
-     - Currently supports single sensitive attribute evaluation
-   * - **Extensible Design**
-     - Framework ready for multiple sensitive attributes
-
-Basic Usage
------------
-
-Here's a simple example of how to use the grid search functionality:
+``bm_list`` is a list of lists of ``BMType``; ``itertools.product`` builds pairs.
 
 .. code-block:: python
 
-   from callmefair.mitigation.fair_grid import BMGridSearch
-   from callmefair.mitigation.fair_bm import BMType
-   from sklearn.ensemble import RandomForestClassifier
+   from itertools import product
+
    import pandas as pd
-
-   # Load your data
-   train_df = pd.read_csv('train.csv')
-   val_df = pd.read_csv('val.csv')
-   test_df = pd.read_csv('test.csv')
-
-   # Initialize the interface
-   bm_interface = BMInterface(train_df, val_df, test_df, 'label', ['gender'])
-
-   # Define groups
-   privileged_groups = [{'gender': 1}]
-   unprivileged_groups = [{'gender': 0}]
-
-   # Define bias mitigation combinations to test
-   bm_combinations = [
-       [BMType.preReweighing],  # Only preprocessing
-       [BMType.preDisparate],   # Only disparate impact remover
-       [BMType.preReweighing, BMType.posCEO],  # Preprocessing + postprocessing
-       [BMType.inAdversarial],  # Only in-processing
-   ]
-
-   # Initialize grid search
-   grid_search = BMGridSearch(
-       bmI=bm_interface,
-       model=RandomForestClassifier(),
-       bm_list=bm_combinations,
-       privileged_group=privileged_groups,
-       unprivileged_group=unprivileged_groups
-   )
-
-   # Run comprehensive evaluation
-   grid_search.run_single_sensitive()
-
-Defining Bias Mitigation Combinations
------------------------------------
-
-The grid search evaluates combinations of bias mitigation techniques. Each combination
-is defined as a list of `BMType` enums:
-
-.. code-block:: python
-
-   from callmefair.mitigation.fair_bm import BMType
-
-   # Single technique combinations
-   single_techniques = [
-       [BMType.preReweighing],
-       [BMType.preDisparate],
-       [BMType.preLFR],
-       [BMType.inAdversarial],
-       [BMType.inMeta],
-       [BMType.posCEO],
-       [BMType.posEO],
-       [BMType.posROC]
-   ]
-
-   # Multi-technique combinations
-   multi_techniques = [
-       [BMType.preReweighing, BMType.posCEO],  # Preprocessing + postprocessing
-       [BMType.preDisparate, BMType.posEO],    # Preprocessing + postprocessing
-       [BMType.preLFR, BMType.posROC],         # Preprocessing + postprocessing
-       [BMType.preReweighing, BMType.preDisparate, BMType.posCEO]  # Complex
-   ]
-
-   # In-processing combinations (exclusive)
-   in_processing = [
-       [BMType.inAdversarial],  # Only in-processing
-       [BMType.inMeta],         # Only in-processing
-   ]
-
-Supported Model Types
---------------------
-
-The grid search automatically adapts to different machine learning frameworks:
-
-.. list-table::
-   :widths: 30 70
-   :header-rows: 1
-
-   * - Framework
-     - Model Examples
-   * - **scikit-learn**
-     - RandomForestClassifier, LogisticRegression, MLPClassifier
-   * - **XGBoost**
-     - XGBClassifier
-   * - **TabNet**
-     - TabNetClassifier
-   * - **Custom Models**
-     - Any model with fit() and predict_proba() methods
-
-Example with different models:
-
-.. code-block:: python
-
-   from sklearn.ensemble import RandomForestClassifier
    from sklearn.linear_model import LogisticRegression
-   from xgboost import XGBClassifier
 
-   # Test with different models
-   models = [
-       RandomForestClassifier(n_estimators=100),
-       LogisticRegression(),
-       XGBClassifier()
-   ]
+   from callmefair import BMGridSearch, BMInterface, BMType
 
-   for model in models:
-       grid_search = BMGridSearch(
-           bmI=bm_interface,
-           model=model,
-           bm_list=bm_combinations,
-           privileged_group=privileged_groups,
-           unprivileged_group=unprivileged_groups
-       )
-       grid_search.run_single_sensitive()
+   df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
+   bmI = BMInterface(df, label="stroke", protected=["age"])
+   privileged_group, unprivileged_group = [{"age": 1}], [{"age": 0}]
 
-Understanding Results
--------------------
+   pre_bm = [BMType.preReweighing, BMType.preDisparate]
+   pos_bm = [BMType.posCalibrated, BMType.posROC]
 
-The grid search automatically logs results to CSV files with the following information:
+   bm_list = [[pre, pos] for pre, pos in product(pre_bm, pos_bm)]  # pre + post
+   bm_list += [[b] for b in pre_bm + pos_bm]                      # each alone
 
-.. list-table::
-   :widths: 30 70
-   :header-rows: 1
+   grid = BMGridSearch(bmI, LogisticRegression(max_iter=1000), bm_list,
+                       privileged_group, unprivileged_group)
+   rows = grid.run_single_sensitive(results_dir="results")
 
-   * - Column
-     - Description
-   * - **model**
-     - Name of the machine learning model used
-   * - **BM**
-     - Bias mitigation combination applied
-   * - **SPD**
-     - Statistical Parity Difference
-   * - **EOD**
-     - Equalized Odds Difference
-   * - **AOD**
-     - Average Odds Difference
-   * - **DI**
-     - Disparate Impact
-   * - **TI**
-     - Theil Index
-   * - **fair_score**
-     - Overall fairness score (0-1, lower is better)
+   res = pd.DataFrame(rows)
+   print(res[["BM", "balanced_acc", "spd", "fair_score"]].round(3).to_string())
+   print("fairest:", res.loc[res["fair_score"].idxmin(), "BM"])
 
-Example result analysis:
+.. code-block:: text
+
+                               BM  balanced_acc    spd  fair_score
+   0                     baseline         0.678 -0.744       1.000
+   1  preReweighing posCalibrated         0.537  0.019       0.894
+   2         preReweighing posROC         0.587 -0.120       0.532
+   3   preDisparate posCalibrated         0.619 -0.483       1.000
+   4         preDisparate posROC         0.593 -0.133       0.559
+   5                preReweighing         0.587 -0.120       0.532
+   6                 preDisparate         0.675 -0.738       1.000
+   7                posCalibrated         0.619 -0.483       1.000
+   8                       posROC         0.593 -0.133       0.559
+   fairest: preReweighing posROC
+
+``fair_score`` is lower-is-fairer (see :doc:`/user_guide/utility_guide`), so
+the best combination is ``idxmin``. Ties at 1.0 are common.
+
+Results file
+------------
+
+``run_single_sensitive(results_dir='results')`` returns the rows and writes
+them to ``<results_dir>/experiment_<timestamp>.csv``. Columns: ``model``,
+``BM``, ``balanced_acc``, ``acc``, ``precision``, ``recall``, ``f1``, ``mcc``,
+``eq_opp_diff``, ``avg_odd_diff``, ``spd``, ``disparate_impact``,
+``theil_idx``, ``fair_score``.
+
+To merge runs use :func:`callmefair.mitigation.fair_log.aggregate_csv_files`.
+It **deletes the source files by default**; pass ``delete_sources=False`` to
+keep them. It uses a process pool, so call it under
+``if __name__ == "__main__":``.
+
+Supported models and custom adapters
+------------------------------------
+
+Models are dispatched through :mod:`callmefair.mitigation.model_adapters`.
+Any object with ``fit`` and ``predict_proba`` works through the generic
+scikit-learn adapter (this covers scikit-learn, XGBoost and CatBoost).
+LightGBM, TabNet and the callmefair TabTransformer have dedicated adapters.
+For anything else, register an adapter (matched by class name, subclasses
+included): a class whose ``fit_predict_proba(model, bmI)`` returns
+``(val_proba, test_proba)``, each ``(n_samples, n_classes)`` with the
+favorable class in column 1.
 
 .. code-block:: python
 
+   import numpy as np
    import pandas as pd
+   from sklearn.svm import LinearSVC
 
-   # Load results
-   results = pd.read_csv('./results/experiment_2024_01_15.csv')
+   from callmefair import BMGridSearch, BMInterface, BMType
+   from callmefair.mitigation.model_adapters import register_adapter
 
-   # Find best performing combination
-   best_fairness = results.loc[results['fair_score'].idxmin()]
-   print(f"Best fairness score: {best_fairness['fair_score']:.4f}")
-   print(f"Combination: {best_fairness['BM']}")
 
-   # Compare preprocessing vs postprocessing
-   pre_only = results[results['BM'].str.contains('pre') & ~results['BM'].str.contains('pos')]
-   pos_only = results[results['BM'].str.contains('pos') & ~results['BM'].str.contains('pre')]
-   
-   print(f"Average fairness score (preprocessing only): {pre_only['fair_score'].mean():.4f}")
-   print(f"Average fairness score (postprocessing only): {pos_only['fair_score'].mean():.4f}")
+   class LinearSVCAdapter:
+       """LinearSVC has no predict_proba: squash decision_function with a sigmoid."""
 
-Advanced Usage
--------------
+       def fit_predict_proba(self, model, bmI):
+           x_train, y_train = bmI.get_train_xy()
+           model.fit(x_train, y_train,
+                     sample_weight=bmI.get_train_BLD().instance_weights)
 
-Custom Model Integration
-~~~~~~~~~~~~~~~~~~~~~~~
+           def proba(x):
+               p = 1.0 / (1.0 + np.exp(-model.decision_function(x)))
+               return np.column_stack((1.0 - p, p))
 
-You can integrate custom models by ensuring they have the required interface:
+           return proba(bmI.get_val_xy()[0]), proba(bmI.get_test_xy()[0])
 
-.. code-block:: python
 
-   class CustomModel:
-       def __init__(self):
-           self.model = RandomForestClassifier()
-       
-       def fit(self, X, y, **kwargs):
-           return self.model.fit(X, y, **kwargs)
-       
-       def predict_proba(self, X):
-           return self.model.predict_proba(X)
-       
-       def __str__(self):
-           return "CustomModel()"
+   register_adapter(LinearSVC, LinearSVCAdapter())
 
-   # Use custom model in grid search
-   grid_search = BMGridSearch(
-       bmI=bm_interface,
-       model=CustomModel(),
-       bm_list=bm_combinations,
-       privileged_group=privileged_groups,
-       unprivileged_group=unprivileged_groups
-   )
+   df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
+   bmI = BMInterface(df, label="stroke", protected=["age"])
+   grid = BMGridSearch(bmI, LinearSVC(), [[BMType.preReweighing]],
+                       [{"age": 1}], [{"age": 0}])
+   rows = grid.run_single_sensitive()
 
-In-Processing Only Evaluation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For in-processing techniques, you can set the model to None:
-
-.. code-block:: python
-
-   # Evaluate only in-processing techniques
-   in_processing_combinations = [
-       [BMType.inAdversarial],
-       [BMType.inMeta]
-   ]
-
-   grid_search = BMGridSearch(
-       bmI=bm_interface,
-       model=None,  # No external model needed
-       bm_list=in_processing_combinations,
-       privileged_group=privileged_groups,
-       unprivileged_group=unprivileged_groups
-   )
-
-Result Aggregation
-~~~~~~~~~~~~~~~~~
-
-For large-scale experiments, you can aggregate results from multiple runs:
-
-.. code-block:: python
-
-   from callmefair.mitigation.fair_log import aggregate_csv_files
-
-   # Aggregate results from multiple experiments
-   aggregate_csv_files(
-       folder_path='./results/',
-       output_file='./results/aggregated_results.csv',
-       num_processes=8
-   )
-
-Best Practices
--------------
-
-1. **Systematic Evaluation**
-   - Start with single techniques before combining
-   - Include baseline (no bias mitigation) for comparison
-   - Test both preprocessing and postprocessing approaches
-
-2. **Model Selection**
-   - Use multiple model types for robustness
-   - Consider computational requirements
-   - Test with your specific data characteristics
-
-3. **Combination Design**
-   - Avoid incompatible combinations (e.g., multiple in-processing)
-   - Consider the order of techniques
-   - Test both simple and complex combinations
-
-4. **Result Analysis**
-   - Look at both fairness and accuracy metrics
-   - Consider the trade-off between fairness and performance
-   - Analyze which techniques work best for your specific case
-
-5. **Reproducibility**
-   - Use fixed random seeds
-   - Document all experimental parameters
-   - Save raw results for later analysis
-
-Troubleshooting
---------------
-
-Common Issues and Solutions
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Import Errors**
-   - Ensure all required dependencies are installed
-   - Check that model types are supported
-
-**Memory Issues**
-   - Use smaller datasets for initial testing
-   - Reduce the number of combinations
-   - Use more efficient model types
-
-**In-Processing Errors**
-   - Ensure TensorFlow is installed for adversarial debiasing
-   - Check that sensitive attributes are properly defined
-   - Verify that groups are correctly specified
-
-**Result Interpretation**
-   - Check that fairness metrics are in expected ranges
-   - Verify that baseline performance is reasonable
-   - Ensure that improvements are statistically significant
-
-Future Enhancements
+In-processing mode
 ------------------
 
-The grid search functionality is designed for future enhancements:
+In-processing techniques supply their own model. Pass ``model=None`` and put
+``inAdversarial`` or ``inMeta`` in ``bm_list`` (the baseline is the same
+learner without mitigation). Combining one with a model raises ``ValueError``.
 
-* **Multiple Sensitive Attributes**: Support for intersectional fairness
-* **Hyperparameter Optimization**: Automatic tuning of technique parameters
-* **Advanced Model Support**: Integration with more ML frameworks
-* **Parallel Processing**: Distributed evaluation across multiple machines
-* **Interactive Analysis**: Web-based result visualization
+.. code-block:: python
 
-For more advanced usage, see the :doc:`../api/mitigation` documentation. 
+   import pandas as pd
+
+   from callmefair import BMGridSearch, BMInterface, BMType
+
+   df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
+   bmI = BMInterface(df, label="stroke", protected=["age"])
+   grid = BMGridSearch(bmI, None, [[BMType.inAdversarial]], [{"age": 1}], [{"age": 0}])
+   rows = grid.run_single_sensitive()
+   print(pd.DataFrame(rows)[["model", "BM", "balanced_acc", "fair_score"]].round(3).to_string())
+
+.. code-block:: text
+
+                     model        BM  balanced_acc  fair_score
+   0  AdversarialDebiasing  baseline         0.683         1.0
+   1  AdversarialDebiasing      inAD         0.681         1.0
+
+Caveats
+-------
+
+- Small groups make metrics noisy (the stroke test split has 189 rows).
+- ``posEqqOds`` can collapse to a trivial classifier when the validation
+  split is tiny (as with stroke), giving degenerate metrics.
+- ``disparate_impact`` can be ``0`` or ``inf``; the score treats it as
+  invalid and uses the default 0.1.
+- ``inAdversarial`` uses TensorFlow 1 graph mode and disables eager execution
+  process-wide; run it apart from Keras or TabTransformer work.
+- ``inMeta`` with ``tau > 0`` raised ``TypeError`` inside aif360's MetaFair
+  code on both example datasets in our runs; verify it on your data first.

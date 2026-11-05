@@ -30,19 +30,18 @@ The integration of machine learning (ML) into healthcare demands rigorous fairne
 ## Getting Started* <a name="start"></a>
 To install and use FairHealthGrid, follow these steps:
 
-### 1. Installation
-
 Requires Python 3.11+. With [uv](https://docs.astral.sh/uv/):
+
 ```bash
-uv pip install "callmefair[dl]"   # core + TensorFlow/PyTorch models
+uv venv --python 3.11 && source .venv/bin/activate
+uv pip install "callmefair[dl]"
 ```
-On macOS run `brew install libomp` first; for Linux + CUDA and other options see [INSTALLATION.md](INSTALLATION.md).
 
-### 2. Documentation
-
-For detailed documentation and usage examples, visit: [CallMeFair Documentation](https://callmefair.readthedocs.io/en/latest/)
+See the [documentation](https://callmefair.readthedocs.io/en/latest/) for installation details (macOS, CUDA), guides and the API reference.
 
 ## Results <a name="results"></a>
+
+*The results below are taken from the paper.*
 
 ### Key Findings
 
@@ -78,17 +77,18 @@ Current evaluations focus on single protected attributes. Future research will a
 If you find our project useful for your research, please consider citing our paper and codebase with the following BibTeX:
 
 ```bibtex
-@proceedings{bento2022deep,
-  title={FairHealthGrid: A Systematic Framework for Evaluating Bias Mitigation Strategies in Healthcare Machine Learning},
-  author={Paiva, Pedro and Dehghani, Farzaneh and Anzum, Fahim and Singhal, Mansi and Metwali, Ayah and Gavrilova, Marina and Bento, Mariana},
-  year={2025},
-  journal={31st Americas Conference on Information Systems, {AMCIS} 2025},
+@inproceedings{paiva2025fairhealthgrid,
+  title     = {FairHealthGrid: A Systematic Framework for Evaluating Bias Mitigation Strategies in Healthcare Machine Learning},
+  author    = {Paiva, Pedro and Dehghani, Farzaneh and Anzum, Fahim and Singhal, Mansi and Metwali, Ayah and Gavrilova, Marina and Bento, Mariana},
+  booktitle = {31st Americas Conference on Information Systems (AMCIS 2025)},
   publisher = {Association for Information Systems},
+  year      = {2025},
+  url       = {https://aisel.aisnet.org/amcis2025/intelfuture/intelfuture/46/}
 }
 ```
 
 ## License <a name="license"></a>
-In the License section of your GitHub project or research paper, include the type of license under which your code or content is released. Briefly explain the permissions and limitations associated with that license. Common licenses include MIT, GPL, or Apache.
+MIT; see [LICENSE](LICENSE).
 
 ## Related Resources <a name="resources"></a>
 - [Related Literature](https://www.frontiersin.org/journals/computational-neuroscience/articles/10.3389/fncom.2024.1434421/full) (ai2lab)

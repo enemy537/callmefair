@@ -1,334 +1,128 @@
 Bias Search Guide
-================
+=================
 
-The bias search functionality in CallMeFair provides comprehensive tools for evaluating bias in machine learning models with respect to sensitive attributes. This guide covers the core search modules and their usage.
+:class:`callmefair.search.fair_search.BiasSearch` measures how biased a model is with
+respect to binary sensitive attributes (``1`` = privileged group, ``0`` = unprivileged),
+alone or combined with set operations. For each attribute it trains a model repeatedly on
+different splits and averages a composite fairness score. **0 means perfectly fair; higher
+means more biased.** The "Raw Fairness Score" is unbounded (>= 0), the "Normalized" score
+lies in [0, 1] (it saturates at 1.0), and tables are sorted most biased first.
 
-Overview
---------
+Evaluating attributes
+---------------------
 
-The bias search framework consists of two main modules:
-
-- ``_search_base.py``: Core functionality for bias evaluation and model training
-- ``fair_search.py``: High-level interface for comprehensive bias analysis
-
-The framework supports:
-
-- Individual attribute bias evaluation
-- Attribute combination analysis (2-way and 3-way combinations)
-- Multiple set operations (union, intersection, differences)
-- Various ML models (Logistic Regression, CatBoost, XGBoost, MLP)
-- Parallel processing for efficient evaluation
-- Pretty table output for results
-
-Core Classes
------------
-
-BaseSearch
-~~~~~~~~~~
-
-The ``BaseSearch`` class provides the foundation for bias evaluation:
+``BiasSearch(df, label_name, attribute_names, n_threads=None, backend='process',
+random_state=42)``. Features must be numeric and the label binary (1 = favorable).
 
 .. code-block:: python
 
-    from callmefair.search._search_base import BaseSearch
-    
-    # Initialize with dataset and target variable
-    searcher = BaseSearch(df, 'target')
-    
-    # Evaluate bias for a specific attribute
-    results = searcher.evaluate_attribute('gender', iterate=10, model_name='lr')
-
-Key Methods:
-
-- ``evaluate_attribute()``: Evaluate bias for a single attribute
-- ``__pre_attribute_bias()``: Prepare datasets for evaluation
-- ``__predict_attribute_bias()``: Compute fairness metrics
-
-BiasSearch
-~~~~~~~~~~
-
-The ``BiasSearch`` class extends BaseSearch with comprehensive analysis capabilities:
-
-.. code-block:: python
-
+    import pandas as pd
     from callmefair.search.fair_search import BiasSearch
-    
-    # Initialize with multiple attributes
-    searcher = BiasSearch(df, 'target', ['gender', 'race', 'age'])
-    
-    # Evaluate individual attributes
-    table, printable = searcher.evaluate_average()
-    
-    # Evaluate attribute combinations
-    table, printable = searcher.evaluate_combinations()
 
-Key Methods:
-
-- ``evaluate_average()``: Evaluate all individual attributes
-- ``evaluate_combinations()``: Evaluate 2-way and 3-way combinations
-- ``evaluate_combination_average()``: Compare different set operations
-
-Attribute Combination Operations
------------------------------
-
-The framework supports various set operations for combining sensitive attributes:
-
-Union (OR)
-~~~~~~~~~~
-Combines attributes using logical OR operation:
-
-.. code-block:: python
-
-    from callmefair.search._search_base import CType, combine_attributes
-    
-    # gender OR race (either attribute is 1)
-    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.union)
-
-Intersection (AND)
-~~~~~~~~~~~~~~~~~
-Combines attributes using logical AND operation:
-
-.. code-block:: python
-
-    # gender AND race (both attributes are 1)
-    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.intersection)
-
-Set Differences
-~~~~~~~~~~~~~~
-Computes set differences between attributes:
-
-.. code-block:: python
-
-    # gender - race (gender=1 AND race=0)
-    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.difference_1_minus_2)
-    
-    # race - gender (race=1 AND gender=0)
-    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.difference_2_minus_1)
-
-Symmetric Difference (XOR)
-~~~~~~~~~~~~~~~~~~~~~~~~~
-Combines attributes using XOR operation:
-
-.. code-block:: python
-
-    # gender XOR race (exactly one attribute is 1)
-    result_df = combine_attributes(df, cols=['gender', 'race'], operation=CType.symmetric_difference)
-
-Supported Models
----------------
-
-The framework supports multiple machine learning models:
-
-Logistic Regression
-~~~~~~~~~~~~~~~~~~
-Fast and interpretable model for bias evaluation:
-
-.. code-block:: python
-
-    results = searcher.evaluate_attribute('gender', model_name='lr')
-
-CatBoost
-~~~~~~~~
-Gradient boosting model with optimized parameters:
-
-.. code-block:: python
-
-    results = searcher.evaluate_attribute('gender', model_name='cat')
-
-XGBoost
-~~~~~~~
-Advanced gradient boosting with balanced parameters:
-
-.. code-block:: python
-
-    results = searcher.evaluate_attribute('gender', model_name='xgb')
-
-Multi-layer Perceptron
-~~~~~~~~~~~~~~~~~~~~~
-Neural network with adaptive learning:
-
-.. code-block:: python
-
-    results = searcher.evaluate_attribute('gender', model_name='mlp')
-
-Usage Examples
--------------
-
-Individual Attribute Evaluation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Evaluate bias for individual sensitive attributes:
-
-.. code-block:: python
-
-    from callmefair.search.fair_search import BiasSearch
-    
-    # Initialize searcher
-    searcher = BiasSearch(df, 'target', ['gender', 'race', 'age'])
-    
-    # Evaluate all attributes
-    table, printable = searcher.evaluate_average(iterate=10, model_name='lr')
-    print(printable)
-
-Attribute Combinations
-~~~~~~~~~~~~~~~~~~~~~
-
-Evaluate bias for attribute combinations:
-
-.. code-block:: python
-
-    # Evaluate 2-way and 3-way combinations
-    table, printable = searcher.evaluate_combinations()
-    print(printable)
-
-Set Operation Comparison
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Compare different ways of combining attributes:
-
-.. code-block:: python
-
-    # Compare all set operations between gender and race
-    table, printable = searcher.evaluate_combination_average('gender', 'race')
-    print(printable)
-
-Advanced Usage
--------------
-
-Custom Dataset Preparation
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Use custom datasets for evaluation:
-
-.. code-block:: python
-
-    # Use modified dataset
-    modified_df = df.copy()
-    modified_df['new_feature'] = some_transformation(modified_df)
-    
-    results = searcher.evaluate_attribute('gender', df_new=modified_df)
-
-Handling Class Imbalance
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Apply NearMiss undersampling for imbalanced datasets:
-
-.. code-block:: python
-
-    # Apply class balancing
-    results = searcher.evaluate_attribute('gender', treat_umbalance=True)
-
-Parallel Processing
-~~~~~~~~~~~~~~~~~~
-
-The framework automatically uses parallel processing for certain models:
-
-.. code-block:: python
-
-    # Logistic Regression and MLP use multiprocessing
-    results = searcher.evaluate_attribute('gender', model_name='lr')  # Parallel
-    
-    # CatBoost and XGBoost use sequential processing
-    results = searcher.evaluate_attribute('gender', model_name='cat')  # Sequential
-
-Output Interpretation
--------------------
-
-Fairness Scores
-~~~~~~~~~~~~~~
-
-The framework computes two types of fairness scores:
-
-- **Raw Score**: Direct fairness metric value
-- **Overall Score**: Normalized fairness score (0-1 scale)
-
-Higher scores indicate better fairness (less bias).
-
-Result Tables
-~~~~~~~~~~~~
-
-Results are presented in pretty tables with columns:
-
-- **Attribute**: Name of the sensitive attribute or combination
-- **Raw Fairness Score**: Direct fairness metric value
-- **Normalized Fairness Score**: Normalized score (0-1)
-
-Example Output:
+    if __name__ == "__main__":  # required on macOS/Windows (process pool, spawn)
+        df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
+        search = BiasSearch(df, "stroke", ["age", "gender", "ever_married", "Residence_type"])
+        table, pretty = search.evaluate_average(iterate=3, model_name="lr")
+        print(pretty)
 
 .. code-block:: text
 
-    +----------+---------------------+------------------------+
-    | Attribute| Raw Fairness Score | Normalized Fairness   |
-    |          |                    | score                 |
-    +----------+---------------------+------------------------+
-    | gender   | 0.85               | 0.92                  |
-    | race     | 0.72               | 0.78                  |
-    | age      | 0.91               | 0.95                  |
-    +----------+---------------------+------------------------+
+    +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
+    |   Attribute    | Raw Fairness Score | Normalized Fairness score | Balanced Accuracy  | Privileged N | Unprivileged N |
+    +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
+    |      age       | 4.611407634682066  |            1.0            | 0.775399889685604  |     290      |      1593      |
+    |  ever_married  | 3.5903379558107154 |            1.0            | 0.7137618636755825 |     1298     |      585       |
+    | Residence_type | 1.257473275697019  |     0.6493333333333333    | 0.7362198933627505 |     950      |      933       |
+    |     gender     | 1.043218147875954  |     0.5670000000000001    | 0.6975914690200403 |     760      |      1123      |
+    +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
 
-Best Practices
--------------
+``evaluate_average`` returns ``(table, PrettyTable)``; ``table`` is a list of rows (header
+first) for further processing. The lower-level
+``evaluate_attribute(attribute, treat_umbalance, iterate, model_name, df_new=None)`` returns a
+dict with keys ``"<attribute>_raw"``, ``"<attribute>_overall"`` and
+``"<attribute>_balanced_acc"``. Pass ``treat_umbalance=True`` (sic) to undersample the
+training split with NearMiss.
 
-1. **Multiple Iterations**: Use at least 5-10 iterations for robust results
-2. **Model Selection**: Start with Logistic Regression for interpretability
-3. **Attribute Combinations**: Use intersection for most meaningful combinations
-4. **Class Balancing**: Apply NearMiss for highly imbalanced datasets
-5. **Parallel Processing**: Use 'lr' or 'mlp' models for faster processing
+Combinations and set operations
+-------------------------------
 
-Troubleshooting
+``evaluate_combinations(iterate=10, model_name='lgbm')`` evaluates the intersection (AND) of
+every 2- and 3-attribute combination, e.g. ``age_gender``. Combinations are skipped (and
+listed in a summary line) unless the new attribute has exactly the values {0, 1}, both groups
+have at least 10 rows, and each of the four (group, label) cells has at least 2 rows.
+
+:func:`callmefair.search._search_base.combine_attributes` ``(df, col1, col2, operation)``
+drops both columns and adds ``f"{col1}_{col2}"``. ``evaluate_combination_average(col_1, col_2)``
+evaluates all five operations of ``CType`` for one pair:
+
+=========================  =====  =====  =====  =====
+Operation                  0,0    0,1    1,0    1,1
+=========================  =====  =====  =====  =====
+``union``                  0      1      1      1
+``intersection``           0      0      0      1
+``difference_1_minus_2``   0      0      1      0
+``difference_2_minus_1``   0      1      0      0
+``symmetric_difference``   0      1      1      0
+=========================  =====  =====  =====  =====
+
+Column headings are the ``(col1, col2)`` values of a row; entries are the combined value.
+
+Methodology
+-----------
+
+Each of the ``iterate`` iterations ``i``:
+
+* splits 70/15/15 (train/validation/test), stratified on (attribute, label), falling back to
+  label only, then to a plain split; the seed is ``random_state + i``;
+* optionally undersamples the training split with NearMiss;
+* standardizes features and trains the model;
+* picks the decision threshold on the validation split by balanced accuracy;
+* computes fairness metrics and balanced accuracy on the test split;
+* iterations are averaged. They run in a process pool (``n_threads`` workers, default
+  ``min(8, performance cores)``); GPU-backed models run sequentially.
+
+Models
+------
+
+``lr`` (liblinear), ``xgb``, ``cat``, ``lgbm``, ``mlp``, ``tabnet``, ``tabtransformer``.
+``evaluate_average`` defaults to ``lr``, ``evaluate_combinations`` to ``lgbm``. Hyperparameters
+are fixed in ``callmefair/search/model_factory.py``; device selection is described in
+:doc:`/user_guide/hardware_guide`.
+
+Adding a model
 --------------
 
-Common Issues
-~~~~~~~~~~~~
-
-**Binary Attributes Required**: All sensitive attributes must be binary (0 or 1)
-
-.. code-block:: python
-
-    # Convert categorical to binary
-    df['gender'] = (df['gender'] == 'male').astype(int)
-
-**Memory Issues**: Reduce iterations or use smaller datasets
+A builder receives scaled ``x``, labels ``y``, ``sample_weight`` and ``n_jobs`` and returns a
+function mapping features to the probability of label 1 (``positive_proba`` wraps any
+sklearn-style classifier). Register it with ``register_model``; pass
+``uses_gpu=lambda: True`` for GPU models so they run sequentially.
 
 .. code-block:: python
 
-    # Use fewer iterations
-    results = searcher.evaluate_attribute('gender', iterate=5)
-
-**Slow Performance**: Use parallel models or reduce dataset size
-
-.. code-block:: python
-
-    # Use Logistic Regression for speed
-    results = searcher.evaluate_attribute('gender', model_name='lr')
-
-Performance Tips
-~~~~~~~~~~~~~~~
-
-1. Use Logistic Regression for quick prototyping
-2. Apply class balancing only when necessary
-3. Use parallel processing for large datasets
-4. Consider feature scaling for better model performance
-5. Cache results for repeated evaluations
-
-Integration with Other Modules
-----------------------------
-
-The bias search functionality integrates with other CallMeFair modules:
-
-- **Bias Mitigation**: Use search results to identify which attributes need mitigation
-- **Grid Search**: Combine with bias mitigation techniques
-- **Utilities**: Use fairness score calculation from fair_util
-
-.. code-block:: python
-
+    import pandas as pd
+    from sklearn.ensemble import RandomForestClassifier
     from callmefair.search.fair_search import BiasSearch
-    from callmefair.bm import BMManager
-    
-    # Identify bias
-    searcher = BiasSearch(df, 'target', ['gender', 'race'])
-    table, printable = searcher.evaluate_average()
-    
-    # Apply mitigation
-    bm_manager = BMManager()
-    mitigated_df = bm_manager.apply_mitigation(df, 'reweighing', 'gender')
+    from callmefair.search.model_factory import positive_proba, register_model
+
+    @register_model("rf")
+    def build_rf(x, y, sample_weight, n_jobs):
+        model = RandomForestClassifier(n_estimators=100, n_jobs=n_jobs, random_state=0)
+        return positive_proba(model.fit(x, y, sample_weight=sample_weight))
+
+    if __name__ == "__main__":
+        df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
+        search = BiasSearch(df, "stroke", ["age", "gender"])
+        print(search.evaluate_average(iterate=2, model_name="rf")[1])
+
+Output (columns as above): ``age`` raw 4.41 / normalized 1.0, ``gender`` raw 0.77 /
+normalized 0.43.
+
+Interpretation
+--------------
+
+* A small privileged group makes scores noisy: on the WiDS data the privileged ``patient_age``
+  group has only 105 rows. Report the group sizes shown in the table.
+* Use ``iterate >= 10`` for reported results; 2-3 iterations are for smoke tests.
+* The normalized score saturates at 1.0, so rank attributes by the raw score when several
+  are at 1.0.
+* Scores are model-dependent; compare attributes using the same model and ``random_state``.

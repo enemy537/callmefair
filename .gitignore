@@ -7,3 +7,4 @@ __pycache__/
 examples/notebooks/results/
 catboost_info/
 .claude/
+docs/_build/

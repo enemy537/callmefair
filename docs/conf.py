@@ -1,28 +1,41 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+import re
+import sys
+from pathlib import Path
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-project = 'CallMeFair'
-copyright = '2025, AI2Lab Team - University of Calgary'
-author = 'AI2Lab Team - University of Calgary'
-release = '0.0.1'
+project = 'callmefair'
+author = 'Pedro Paiva et al., University of Calgary AI2Lab'
+copyright = '2025, ' + author
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+# Read the version without importing the package.
+release = re.search(r'^__version__\s*=\s*"([^"]+)"',
+                    (ROOT / 'callmefair' / '__init__.py').read_text(), re.M).group(1)
 
-extensions = []
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
+]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+autodoc_member_order = 'bysource'
+# Mock the ML stack so the docs build without installing it.
+autodoc_mock_imports = [
+    'tensorflow', 'keras', 'torch', 'pytorch_tabnet', 'einops', 'aif360',
+    'xgboost', 'catboost', 'lightgbm', 'imblearn', 'BlackBoxAuditing',
+    'sklearn', 'scipy', 'matplotlib', 'seaborn', 'prettytable', 'tqdm',
+]
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'pandas': ('https://pandas.pydata.org/docs/', None),
+    'sklearn': ('https://scikit-learn.org/stable/', None),
+}
 
-
-
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
+exclude_patterns = ['_build']
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+
+# Types from mocked or third-party libraries cannot be resolved.
+nitpick_ignore_regex = [('py:class', r'.*')]

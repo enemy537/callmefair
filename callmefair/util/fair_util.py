@@ -3,10 +3,12 @@ Core utilities for bias mitigation.
 
 - `calculate_fairness_score`: aggregate EOD/AOD/SPD/DI/TI into one 0-1 score.
 - `BMInterface`: stratified train/val/test splits exposed as aif360
-  `BinaryLabelDataset`s and as scaled (X, y) arrays.
+  ``BinaryLabelDataset``\ s and as scaled (X, y) arrays.
 - `BMMetrics`: classification + fairness metrics of a model's predictions on
   the test split, using a threshold tuned on the validation split.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -59,13 +61,13 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
     Aggregate five fairness metrics into a single score (0 = perfectly fair).
 
     Each metric adds a 0.2 penalty if outside its acceptable range plus
-    0.16 * (|value - optimum| / range half-width). The sum is normalised by the
+    0.16 * (\|value - optimum\| / range half-width). The sum is normalised by the
     maximum (5 * 0.36) and clipped to [0, 1].
 
     Acceptable range / optimum: EOD, AOD, SPD in (-0.1, 0.1) / 0;
     DI in (0.8, 1.2) / 1; TI in (0, 0.25) / 0.
 
-    Invalid inputs (None, NaN/inf, non-numeric, implausible such as |EOD| > 1,
+    Invalid inputs (None, NaN/inf, non-numeric, implausible such as \|EOD\| > 1,
     DI outside [1e-6, 5], TI outside [0, 1]) never raise: they are replaced by
     "unfair" defaults (EOD/AOD/SPD/TI = 1.0, DI = 0.1).
 
@@ -128,7 +130,7 @@ def _has_all_classes(label: str, *splits: pd.DataFrame) -> bool:
 class BMInterface:
     """
     Splits a DataFrame (stratified train/val/test) and serves the splits as
-    aif360 `BinaryLabelDataset`s and as standardised (X, y) arrays.
+    aif360 ``BinaryLabelDataset``\ s and as standardised (X, y) arrays.
 
     The (X, y) arrays are always standardised with a scaler fitted on the train
     split. The BLDs are standardised only after `set_transform()`.
@@ -310,7 +312,7 @@ class BMMetrics:
 
     Predictions are either probability matrices of shape (n, n_classes) whose
     columns follow `class_array` (positive iff score > threshold), or aif360
-    `BinaryLabelDataset`s (in-processing mode; their `.scores` are used and the
+    ``BinaryLabelDataset``\ s (in-processing mode; their `.scores` are used and the
     positive rule is score >= threshold). The caller's objects are not mutated.
     """
 

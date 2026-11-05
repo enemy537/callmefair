@@ -30,9 +30,17 @@ MPS_TABNET_DEVICE = device.MPS_TABNET_DEVICE  # re-exported for callers/tests
 MODEL_BUILDERS: dict[str, Builder] = {}
 
 
-def register_model(name: str) -> Callable[[Builder], Builder]:
+def register_model(name: str, *, uses_gpu: Callable[[], bool] | None = None
+                   ) -> Callable[[Builder], Builder]:
+    """Register ``builder`` under ``name``.
+
+    ``uses_gpu`` reports whether the model trains on a GPU (GPU models run
+    sequentially); omit it for CPU-only models.
+    """
     def decorator(builder: Builder) -> Builder:
         MODEL_BUILDERS[name] = builder
+        if uses_gpu is not None:
+            _USES_GPU[name] = uses_gpu
         return builder
     return decorator
 
@@ -47,7 +55,7 @@ def fit_model(name: str, x: np.ndarray, y: np.ndarray,
     return builder(x, y, sample_weight, n_jobs)
 
 
-def _positive_proba(model) -> Predictor:
+def positive_proba(model) -> Predictor:
     """Wrap an sklearn-style classifier as a positive-class predictor."""
     classes = list(model.classes_)
     if FAVORABLE_LABEL not in classes:
@@ -60,7 +68,7 @@ def _positive_proba(model) -> Predictor:
 def _build_lr(x, y, w, n_jobs):
     from sklearn.linear_model import LogisticRegression
     model = LogisticRegression(solver="liblinear").fit(x, y, sample_weight=w)
-    return _positive_proba(model)
+    return positive_proba(model)
 
 
 @register_model("cat")
@@ -69,7 +77,7 @@ def _build_cat(x, y, w, n_jobs):
     model = CatBoostClassifier(eval_metric="Accuracy", depth=4, learning_rate=0.01,
                                iterations=10, thread_count=n_jobs, verbose=False,
                                **device.catboost_params())
-    return _positive_proba(model.fit(x, y))
+    return positive_proba(model.fit(x, y))
 
 
 @register_model("xgb")
@@ -78,7 +86,7 @@ def _build_xgb(x, y, w, n_jobs):
     model = XGBClassifier(max_depth=8, learning_rate=0.01, gamma=0.25, n_estimators=500,
                           subsample=0.8, colsample_bytree=0.3, n_jobs=n_jobs,
                           **device.xgboost_params())
-    return _positive_proba(model.fit(x, y))
+    return positive_proba(model.fit(x, y))
 
 
 @register_model("lgbm")
@@ -87,7 +95,7 @@ def _build_lgbm(x, y, w, n_jobs):
     model = LGBMClassifier(n_estimators=500, learning_rate=0.05, num_leaves=31,
                            subsample=0.8, colsample_bytree=0.8, objective="binary",
                            n_jobs=n_jobs, verbose=-1, **device.lightgbm_params())
-    return _positive_proba(model.fit(x, y, sample_weight=w))
+    return positive_proba(model.fit(x, y, sample_weight=w))
 
 
 @register_model("mlp")
@@ -117,10 +125,13 @@ def _tensorflow_sees_gpu() -> bool:
     return bool(tf.config.list_physical_devices("GPU"))
 
 
+def _cpu_only() -> bool:
+    return False
+
+
 # Per-model test: will this model train on a GPU? Such models run one at a time
 # (GPU memory/context contention); CPU-only models are spread over worker processes.
 _USES_GPU: dict[str, Callable[[], bool]] = {
-    "lr": lambda: False,
     "cat": lambda: bool(device.catboost_params()),
     "xgb": lambda: device.xgboost_params()["device"] == device.CUDA,
     "lgbm": lambda: bool(device.lightgbm_params()),
@@ -131,7 +142,8 @@ _USES_GPU: dict[str, Callable[[], bool]] = {
 
 
 def uses_gpu(name: str) -> bool:
-    return _USES_GPU[name]()
+    """Whether model ``name`` trains on a GPU; unknown/CPU-only models return False."""
+    return _USES_GPU.get(name, _cpu_only)()
 
 
 @register_model("tabnet")
@@ -141,7 +153,7 @@ def _build_tabnet(x, y, w, n_jobs):
     torch.set_num_threads(n_jobs)
     model = TabNetClassifier(seed=42, verbose=0, device_name=tabnet_device())
     model.fit(x.astype(np.float32), y)  # MPS has no float64
-    positive = _positive_proba(model)
+    positive = positive_proba(model)
     return lambda features: positive(features.astype(np.float32))
 
 
