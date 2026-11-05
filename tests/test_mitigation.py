@@ -34,16 +34,6 @@ RUNNER = textwrap.dedent("""
     from callmefair.mitigation.fair_bm import BMType
     from callmefair.mitigation.fair_grid import BMGridSearch
 
-    # Interim shim: until fair_util's set_pos_pred stops re-thresholding the
-    # post-processed labels, use the intended contract (labels respected as-is).
-    if 'best_class_thresh' in inspect.getsource(BMMetrics.set_pos_pred):
-        def set_pos_pred(self, test_BLD_pred):
-            self.cmetrics = ClassificationMetric(
-                self.bmI.get_test_BLD(), test_BLD_pred,
-                unprivileged_groups=self.unprivileged_group,
-                privileged_groups=self.privileged_group)
-        BMMetrics.set_pos_pred = set_pos_pred
-
     np.random.seed(0)
     model_name, sets = sys.argv[1], sys.argv[2:]
     df = pd.read_csv(%(csv)r)
@@ -109,7 +99,11 @@ def test_non_post_rows_match_original(original_tree, current, tmp_path):
         assert old["model"] == new["model"] == "LogisticRegression"
         assert old["BM"] == new["BM"]
         for col in NUMERIC:
-            assert new[col] == pytest.approx(old[col], rel=1e-9, abs=1e-12, nan_ok=True), (new["BM"], col)
+            expected_val = old[col]
+            # Intentional change: F1/MCC are 0.0 (not nan) when their denominator is 0.
+            if col in ("f1", "mcc") and np.isnan(expected_val):
+                expected_val = 0.0
+            assert new[col] == pytest.approx(expected_val, rel=1e-9, abs=1e-12, nan_ok=True), (new["BM"], col)
 
 
 def test_post_processing_rows_differ_from_baseline(current):
