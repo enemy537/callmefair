@@ -3,4 +3,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .DS_Store
-results/
+/results/
+examples/notebooks/results/
+catboost_info/
+.claude/
