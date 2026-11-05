@@ -82,3 +82,19 @@ def test_errors():
         TabTransformer(CONFIG).fit(make_df().drop(columns="target"))
     with pytest.raises(RuntimeError):
         TabTransformer(CONFIG).predict_proba(make_df())
+
+
+def test_lightgbm_survives_torch_import_on_macos():
+    """Regression: torch's libomp loaded first made multi-threaded LightGBM segfault on macOS."""
+    import subprocess, sys, textwrap
+    code = textwrap.dedent("""
+        import numpy as np
+        from callmefair.util import device
+        device.detect()                      # imports torch via device.import_torch()
+        import lightgbm as lgb
+        X = np.random.rand(2000, 10); y = (X[:, 0] > .5).astype(int)
+        lgb.LGBMClassifier(n_estimators=20, verbose=-1, n_jobs=4).fit(X, y)
+    """)
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    proc = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, timeout=120)
+    assert proc.returncode == 0, proc.stderr.decode()[-2000:]

@@ -92,7 +92,7 @@ class TabNetAdapter:
     def _apply_default_device(model) -> None:
         if getattr(model, "device_name", None) != "auto":
             return
-        import torch  # lazy: only TabNet users pay for it
+        torch = device.import_torch()  # lazy; macOS-safe OpenMP load order
         name = device.torch_device()
         model.device_name = name
         model.device = torch.device(name)

@@ -138,7 +138,7 @@ def uses_gpu(name: str) -> bool:
 
 @register_model("tabnet")
 def _build_tabnet(x, y, w, n_jobs):
-    import torch
+    torch = device.import_torch()
     from pytorch_tabnet.tab_model import TabNetClassifier
     torch.set_num_threads(n_jobs)
     model = TabNetClassifier(seed=42, verbose=0, device_name=tabnet_device())

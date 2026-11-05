@@ -23,9 +23,25 @@ CUDA, MPS, CPU = "cuda", "mps", "cpu"
 _VALID = (CUDA, MPS, CPU)
 
 
+def import_torch():
+    """Import torch safely; use this instead of a bare ``import torch``.
+
+    On macOS, torch ships its own libomp. If it is loaded before LightGBM's
+    libomp, multi-threaded LightGBM training segfaults (SIGSEGV) later in the
+    same process. Loading LightGBM first makes both share one OpenMP runtime.
+    """
+    if platform.system() == "Darwin":
+        try:
+            import lightgbm  # noqa: F401
+        except (ImportError, OSError):
+            pass
+    import torch
+    return torch
+
+
 def _torch_has(kind: str) -> bool:
     try:
-        import torch
+        torch = import_torch()
     except ImportError:
         return False
     if kind == CUDA:
