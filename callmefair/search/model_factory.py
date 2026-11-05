@@ -25,8 +25,7 @@ Predictor = Callable[[np.ndarray], np.ndarray]
 Builder = Callable[[np.ndarray, np.ndarray, np.ndarray, int], Predictor]
 
 FAVORABLE_LABEL = 1
-# TabNet device on Apple Silicon hosts, chosen by benchmark (see report).
-MPS_TABNET_DEVICE = "cpu"
+MPS_TABNET_DEVICE = device.MPS_TABNET_DEVICE  # re-exported for callers/tests
 
 MODEL_BUILDERS: dict[str, Builder] = {}
 
@@ -110,8 +109,7 @@ def _build_mlp(x, y, w, n_jobs):
 
 
 def tabnet_device() -> str:
-    detected = device.torch_device()
-    return MPS_TABNET_DEVICE if detected == device.MPS else detected
+    return device.tabnet_device()
 
 
 def _tensorflow_sees_gpu() -> bool:

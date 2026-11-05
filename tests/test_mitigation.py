@@ -306,7 +306,7 @@ def test_tabnet_device_default_only_when_unset(monkeypatch):
     from callmefair.mitigation import model_adapters as ma
     from callmefair.util import device
 
-    monkeypatch.setattr(device, "torch_device", lambda: "cpu")
+    monkeypatch.setattr(device, "tabnet_device", lambda: "cpu")
 
     class TabNetClassifier(_Proba):
         def __init__(self, device_name):
@@ -321,6 +321,13 @@ def test_tabnet_device_default_only_when_unset(monkeypatch):
     assert auto.device_name == "cpu" and auto.device.type == "cpu"
     assert explicit.device_name == "cuda:1" and not hasattr(explicit, "device")
     assert len(auto.eval_set) == 1
+
+
+def test_tabnet_auto_device_never_mps(monkeypatch):
+    """Regression: 'auto' TabNet was sent to MPS, which crashes on float64 features."""
+    from callmefair.util import device
+    monkeypatch.setattr(device, "detect", lambda: device.MPS)
+    assert device.tabnet_device() == device.CPU
 
 
 def test_tab_transformer_adapter_builds_target_frame_and_2d_proba():

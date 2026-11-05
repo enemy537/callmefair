@@ -77,8 +77,19 @@ def is_cuda() -> bool:
 
 
 def torch_device() -> str:
-    """Device string for PyTorch-based models (TabNet)."""
+    """Best device string for generic PyTorch work."""
     return detect()
+
+
+# TabNet on Apple Silicon: MPS showed no speedup over CPU in benchmarks (wids,
+# ~13k rows) and rejects float64 inputs, so TabNet stays on CPU there.
+MPS_TABNET_DEVICE = CPU
+
+
+def tabnet_device() -> str:
+    """Device for TabNet: CUDA when present, CPU otherwise (see MPS_TABNET_DEVICE)."""
+    detected = torch_device()
+    return MPS_TABNET_DEVICE if detected == MPS else detected
 
 
 def xgboost_params() -> dict:

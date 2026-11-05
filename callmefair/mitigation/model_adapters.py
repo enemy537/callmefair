@@ -77,7 +77,7 @@ class TabNetAdapter:
     """TabNet: eval_set on validation data; device default from the device module.
 
     The device is only chosen when the user left TabNet's ``device_name`` at
-    ``'auto'`` (which would otherwise never select Apple's MPS).
+    ``'auto'``; it follows ``device.tabnet_device()`` (CUDA if present, else CPU).
     """
 
     def fit_predict_proba(self, model, bmI):
@@ -93,7 +93,7 @@ class TabNetAdapter:
         if getattr(model, "device_name", None) != "auto":
             return
         torch = device.import_torch()  # lazy; macOS-safe OpenMP load order
-        name = device.torch_device()
+        name = device.tabnet_device()
         model.device_name = name
         model.device = torch.device(name)
 
