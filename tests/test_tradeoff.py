@@ -1,172 +1,153 @@
-"""Tests for callmefair.tradeoff (baseline, normalisation, regions, areas) and the map plot."""
+"""Tests for callmefair.tradeoff (Fairea map) and its plot."""
+
+import warnings
+
+import matplotlib
+matplotlib.use("Agg")
 
 import numpy as np
 import pandas as pd
 import pytest
 
-pytest.importorskip("shapely")
-from shapely.geometry import LineString  # noqa: E402
+from callmefair.tradeoff import (_mutate, area_polygon, baseline_curve, classify_region,
+                                 compute_area, normalize, select_strategy, tradeoff_regions)
 
-from callmefair.tradeoff import (_mutate, classify_region, compute_area,  # noqa: E402
-                                 normalize)
-
-# Normalised baseline: O = (bias 1, loss 0) -> (bias 0, loss 1), the diagonal.
-DIAGONAL = LineString([(1.0, 0.0), (0.5, 0.5), (0.0, 1.0)])
+# A straight baseline as in the paper: F_OM at (1, 1), F100 at (0, 0) after normalisation.
+DIAG = (np.linspace(1, 0, 11), np.linspace(1, 0, 11))     # (bias, acc), ordered by degree
 
 
-def region(loss, bias, line=DIAGONAL):
-    return classify_region(line, {"m": (loss, bias)})["m"]
+def _baseline_df(acc0=0.73, bias0=0.88):
+    """Synthetic create_baseline() output: linear decay to (bias 0, acc 0.5) for 'to_1'."""
+    deg = np.round(np.linspace(0, 1, 11), 1)
+    rows = []
+    for strategy, end_acc in (("to_0", 0.5), ("to_1", 0.5)):
+        steep = 1.0 if strategy == "to_1" else 1.2       # to_0 loses accuracy faster
+        acc = acc0 - (acc0 - end_acc) * np.clip(deg * steep, 0, 1)
+        for d, a, b in zip(deg, acc, bias0 * (1 - deg)):
+            rows.append(dict(strategy=strategy, degree=d, acc=a, balanced_acc=a, spd=b, aod=b,
+                             eod=b, fair_score=min(1.0, b)))
+    return pd.DataFrame(rows)
 
 
-@pytest.mark.parametrize("loss, bias, expected", [
-    (0.0, 0.5, "win-win"),          # as accurate as O, less biased
-    (0.2, 0.3, "good trade-off"),   # below-left of the curve
-    (0.8, 0.5, "bad trade-off"),    # above-right of the curve, still less biased than O
-    (0.9, 1.1, "lose-lose"),        # worse than O in both
-    (0.5, 1.2, "lose-lose"),
-    (0.0, 1.3, "inverted"),         # more biased, as accurate
+# ------------------------------------------------------------------ regions (paper Fig. 2)
+
+@pytest.mark.parametrize("point, region", [
+    ((1.1, 0.5), "win-win"),          # more accurate, less biased than F_OM
+    ((1.1, 1.2), "inverted"),         # more accurate, more biased
+    ((0.5, 1.2), "lose-lose"),        # less accurate, more biased
+    ((0.6, 0.3), "good trade-off"),   # above the baseline
+    ((0.3, 0.6), "bad trade-off"),    # below the baseline
+    ((0.2, -0.1), "good trade-off"),  # less biased than F100 but more accurate than the line
+    ((0.5, 1.0), "lose-lose"),        # no bias reduction (e.g. saturated score), less accurate
 ])
-def test_regions(loss, bias, expected):
-    assert region(loss, bias) == expected
+def test_regions_follow_the_paper(point, region):
+    assert classify_region(*DIAG, {"m": point}) == {"m": region}
 
 
-def test_area_triangle():
-    # P=(bias .25, loss .25): right hit (.75,.25), up hit (.25,.75) -> triangle legs .5
-    assert compute_area(DIAGONAL, (0.25, 0.25)) == pytest.approx(0.125)
+def _ray_reference(base_bias, base_acc, acc, bias):
+    """Independent implementation of Fairea's ray tests (valid inside [0, 1]^2)."""
+    shapely = pytest.importorskip("shapely.geometry")
+    base = shapely.LineString(list(zip(base_bias, base_acc)))
+    p = shapely.Point(bias, acc)
+    down, right = (shapely.LineString([(p.x, p.y), (p.x, 0)]),
+                   shapely.LineString([(p.x, p.y), (2, p.y)]))
+    up, left = (shapely.LineString([(p.x, p.y), (p.x, 2)]),
+                shapely.LineString([(p.x, p.y), (0, p.y)]))
+    if base.intersects(down) and base.intersects(right):
+        return "good trade-off"
+    if base.intersects(down):
+        return "win-win"
+    if base.intersects(up):
+        return "bad trade-off"
+    if base.intersects(left):
+        return "lose-lose"
+    return "inverted"
 
 
-def test_area_zero_outside_good_region():
-    for loss, bias in [(0.0, 0.5), (0.8, 0.5), (0.9, 1.1), (0.0, 1.3)]:
-        assert compute_area(DIAGONAL, (loss, bias)) == 0.0
-
-
-def test_area_when_vertical_line_misses_curve():
-    line = LineString([(1.0, 0.0), (0.5, 0.5), (0.4, 1.0)])
-    area = compute_area(line, (0.3, 0.1))     # bias .3 is below the curve's minimum .4
-    assert 0 < area < 1
-
-
-def test_area_curved_baseline_exceeds_straight():
-    bulge = LineString([(1.0, 0.0), (0.9, 0.5), (0.0, 1.0)])
-    assert compute_area(bulge, (0.25, 0.25)) > 0
-
-
-def test_normalize_shared_scale_and_orientation():
-    loss, bias, pts = normalize([0.8, 0.7, 0.6], [0.6, 0.3, 0.0], {"m": (0.9, 0.0)})
-    assert pts["m"][0] == 0.0 and loss[0] == pytest.approx(1 / 3)
-    assert bias.max() == 1.0 and bias.min() == 0.0
-
-
-def test_normalize_constant_axis():
-    loss, bias, _ = normalize([0.7, 0.7], [0.1, 0.1])
-    assert (loss == 0).all() and (bias == 0).all()
-
-
-def test_mutate_is_vectorised_and_fraction_exact():
-    labels = np.zeros((100, 1), dtype=int)
-    out = _mutate(labels, 0.3, (0.0, 1.0), np.random.default_rng(0))
-    assert out.sum() == 30 and labels.sum() == 0
-    assert _mutate(labels, 0.0, (0.0, 1.0), np.random.default_rng(0)).sum() == 0
-
-
-def test_create_baseline_tidy_output():
-    from sklearn.linear_model import LogisticRegression
-    from callmefair.tradeoff import baseline_curve, create_baseline
-    rng = np.random.default_rng(1)
-    n = 600
-    df = pd.DataFrame({"a": rng.integers(0, 2, n), "x": rng.normal(size=n)})
-    df["y"] = ((df.x + 0.5 * df.a + rng.normal(scale=0.5, size=n)) > 0.3).astype(int)
-    base = create_baseline(lambda: LogisticRegression(), df, "y", "a", [{"a": 1}], [{"a": 0}],
-                           data_splits=1, repetitions=1, degrees=(0, 0.5, 1))
-    assert list(base.columns) == ["strategy", "degree", "balanced_acc", "fair_score"]
-    assert len(base) == 6
-    curve = baseline_curve(base, "to_1")
-    assert curve.degree.tolist() == [0, 0.5, 1]
-    assert curve.balanced_acc.iloc[-1] == pytest.approx(0.5)
-
-
-def test_area_polygon_matches_area():
-    from callmefair.tradeoff import area_polygon
-    assert area_polygon(DIAGONAL, (0.25, 0.25)).area == pytest.approx(0.125)
-    assert area_polygon(DIAGONAL, (0.0, 0.5)) is None
-
-
-# --------------------------------------------------------- tradeoff_regions / map
-
-def _fixture():
+def test_regions_match_fairea_ray_tests_inside_the_baseline_range():
     rng = np.random.default_rng(0)
-    base = pd.DataFrame({
-        "strategy": "to_1", "degree": np.round(np.linspace(0, 1, 11), 1),
-        "balanced_acc": np.linspace(0.8, 0.5, 11), "fair_score": np.linspace(0.6, 0.0, 11)})
-    rows = [{"model": "LR", "BM": "baseline", "balanced_acc": 0.8, "fair_score": 0.6}]
-    for model in ("LR", "XGB"):
-        rows += [
-            {"model": model, "BM": "preGood", "balanced_acc": 0.74, "fair_score": 0.15},
-            {"model": model, "BM": "posBad", "balanced_acc": 0.55, "fair_score": 0.45},
-            {"model": model, "BM": "preLose", "balanced_acc": 0.70, "fair_score": 0.65},
-            {"model": model, "BM": "posInv", "balanced_acc": 0.82, "fair_score": 0.65},
-        ]
-    return base, rows
+    bias = np.linspace(1, 0, 11)
+    acc = np.clip(bias + rng.normal(0, 0.03, 11), 0, 1)       # noisy, near-diagonal
+    acc[0], acc[-1] = 1.0, 0.0
+    pts = {i: (a, b) for i, (a, b) in enumerate(rng.uniform(0.01, 0.99, (400, 2)))}
+    ours = classify_region(bias, acc, pts)
+    for i, (a, b) in pts.items():
+        assert ours[i] == _ray_reference(bias, acc, a, b), (a, b)
 
 
-def test_tradeoff_regions_table():
-    from callmefair.tradeoff import tradeoff_regions
-    base, rows = _fixture()
-    out = tradeoff_regions(base, rows)
-    assert list(out.columns) == ["model", "BM", "balanced_acc", "fair_score", "loss", "bias",
-                                 "region", "paper_region", "area"]
-    assert len(out) == 8 and "baseline" not in set(out.BM)
-    reg = out.set_index(["model", "BM"]).region
-    assert reg["LR", "preGood"] == "good trade-off"
-    assert reg["LR", "posBad"] == "bad trade-off"
-    assert reg["LR", "preLose"] == "lose-lose"
-    assert reg["LR", "posInv"] == "inverted"
-    assert out.set_index(["model", "BM"]).paper_region["LR", "posBad"] == "Poor"
-    assert (out.area[out.region != "good trade-off"] == 0).all()
-    assert (out.area[out.region == "good trade-off"] > 0).all()
-    assert out[["loss", "bias"]].min().min() >= 0
+# ------------------------------------------------------------------ area (paper Fig. 3)
+
+def test_area_is_the_triangle_between_point_and_straight_baseline():
+    # point (bias 0.2, acc 0.6): horizontal hits the diagonal at bias 0.6, vertical at acc 0.2
+    assert compute_area(*DIAG, (0.6, 0.2)) == pytest.approx(0.5 * 0.4 * 0.4, rel=1e-3)
+    poly = area_polygon(*DIAG, (0.6, 0.2))
+    assert poly[0].tolist() == [0.2, 0.6]                     # BM first
 
 
-def test_tradeoff_regions_averages_repeats():
-    from callmefair.tradeoff import tradeoff_regions
-    base, rows = _fixture()
-    assert len(tradeoff_regions(base, pd.DataFrame(rows + rows))) == 8
+def test_area_is_zero_outside_good_trade_off():
+    for point in [(0.3, 0.6), (1.1, 0.5), (0.5, 1.2), (1.1, 1.2)]:
+        assert compute_area(*DIAG, point) == 0.0
+        assert area_polygon(*DIAG, point) is None
+
+
+def test_area_grows_with_distance_from_baseline():
+    assert compute_area(*DIAG, (0.8, 0.2)) > compute_area(*DIAG, (0.6, 0.2)) > 0
+
+
+# ------------------------------------------------------------------ normalisation & strategy
+
+def test_normalize_uses_the_baseline_range():
+    acc, bias, m = normalize([0.73, 0.5], [0.88, 0.0], {"x": (0.8, -0.1)})
+    assert acc.tolist() == [1.0, 0.0] and bias.tolist() == [1.0, 0.0]
+    assert m["x"][0] > 1 and m["x"][1] < 0                    # methods may leave [0, 1]
+
+
+def test_strategy_rule_and_tie_break():
+    base = _baseline_df()
+    # both end at 0.5 balanced accuracy -> tie broken by the stricter (higher mean) curve
+    assert select_strategy(base) == "to_1"
+    base.loc[(base.strategy == "to_0") & (base.degree == 1.0), "acc"] = 0.95
+    assert select_strategy(base, accuracy="acc") == "to_0"
+
+
+def test_warns_when_fairea_requirement_is_not_met():
+    base = _baseline_df()
+    base.loc[base.degree == 1.0, "acc"] = 0.95               # constant model beats original
+    with pytest.warns(UserWarning, match="requirement not met"):
+        baseline_curve(base, "to_1", accuracy="acc")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        baseline_curve(base, "to_1", accuracy="balanced_acc")
+
+
+def test_mutate_changes_exactly_the_requested_fraction():
+    labels = np.zeros((100, 1))
+    out = _mutate(labels, 0.3, (0.0, 1.0), np.random.default_rng(0))
+    assert int(out.sum()) == 30 and labels.sum() == 0
+
+
+# ------------------------------------------------------------------ one call + plot
+
+ROWS = [dict(model="LR", BM="baseline", balanced_acc=0.73, acc=0.8, spd=-0.88, avg_odd_diff=-0.6,
+             eq_opp_diff=-0.6, fair_score=1.0),
+        dict(model="LR", BM="preReweighing", balanced_acc=0.65, acc=0.7, spd=-0.10,
+             avg_odd_diff=-0.1, eq_opp_diff=-0.1, fair_score=0.4),
+        dict(model="LR", BM="posROC", balanced_acc=0.55, acc=0.6, spd=-0.60, avg_odd_diff=-0.5,
+             eq_opp_diff=-0.5, fair_score=0.9)]
+
+
+def test_tradeoff_regions_columns_and_attrs():
+    reg = tradeoff_regions(_baseline_df(), ROWS)
+    assert list(reg["BM"]) == ["preReweighing", "posROC"]     # baseline rows dropped
+    assert list(reg["region"]) == ["good trade-off", "bad trade-off"]
+    assert reg.loc[0, "area"] > 0 and reg.loc[1, "area"] == 0
+    assert reg.attrs == {"strategy": "to_1", "accuracy": "balanced_acc", "bias": "spd"}
 
 
 def test_plot_tradeoff_map_returns_figure():
-    import matplotlib
-    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.figure import Figure
-    from callmefair.tradeoff import tradeoff_regions
-    from callmefair.viz.tradeoff_map import plot_tradeoff_map
-    base, rows = _fixture()
-    fig = plot_tradeoff_map(base, tradeoff_regions(base, rows))
-    assert isinstance(fig, Figure)
-    assert len(fig.axes) == 1
-    plt.close(fig)
-    fig2, ax = plt.subplots()
-    assert plot_tradeoff_map(base, tradeoff_regions(base, rows), ax=ax, label=False) is fig2
-    plt.close(fig2)
-
-
-def test_region_tints_match_classification():
-    from callmefair.tradeoff import tradeoff_regions
-    from callmefair.viz.tradeoff_map import region_geometries
-    from shapely.geometry import Point
-    base, rows = _fixture()
-    # noisy, non-monotone baseline to exercise the envelope
-    base.loc[base.degree == 0.5, "fair_score"] = 0.45
-    rng = np.random.default_rng(3)
-    extra = [{"model": "LR", "BM": f"m{i}", "balanced_acc": rng.uniform(0.45, 0.85),
-              "fair_score": rng.uniform(-0.05, 0.7)} for i in range(60)]
-    out = tradeoff_regions(base, rows + extra)
-    from callmefair.tradeoff import baseline_curve, normalize
-    curve = baseline_curve(base, "to_1")
-    meth = {f"{r.model} | {r.BM}": (r.balanced_acc, r.fair_score) for r in out.itertuples()}
-    loss_b, bias_b, _ = normalize(curve.balanced_acc, curve.fair_score, meth)
-    line = LineString(zip(bias_b, loss_b))
-    geoms = region_geometries(line, (-0.04, -0.04, 1.1, 1.1))
-    for r in out.itertuples():
-        p = Point(r.bias, r.loss)
-        assert geoms[r.region].buffer(1e-6).covers(p), (r.region, r.bias, r.loss)
+    from callmefair.viz import plot_tradeoff_map
+    base = _baseline_df()
+    fig = plot_tradeoff_map(base, tradeoff_regions(base, ROWS))
+    assert fig.axes and fig.axes[0].get_title() == "Fairea trade-off map"
+    plt.close("all")

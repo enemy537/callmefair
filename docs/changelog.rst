@@ -4,6 +4,14 @@ Changelog
 0.1.0 (unreleased)
 ------------------
 
+Added
+~~~~~
+
+* ``callmefair.viz`` plotting module (trade-off scatter, heatmap, mitigation effect, fair ranges, bias search, group rates, threshold sweep, trade-off map).
+* ``callmefair.tradeoff``: paper-faithful Fairea trade-off map (Hort et al., 2021): mutation baseline averaged over splits and repetitions (``create_baseline``), strategy selection, normalisation by the baseline's range, the paper's five regions and Fig. 3 areas (``tradeoff_regions``). Defaults: balanced accuracy and ``|SPD|``; ``'acc'``, ``'aod'``, ``'eod'`` and ``'fair_score'`` are options.
+* ``BMMetrics.threshold_curve()``.
+* ``METRIC_RANGES`` and ``METRIC_OPTIMA`` in ``callmefair.util.fair_util``.
+
 Fixed
 ~~~~~
 
@@ -18,7 +26,8 @@ Fixed
 * ``inMeta`` naming and state reset.
 * LightGBM segfault on macOS when torch was loaded first.
 * Typo in the packaging dependencies.
-* Example trade-off code (``examples/Fairea``, replaced by ``fhg_examples.tradeoff``): baseline and methods were normalized on different scales; accuracy was inverted while the upstream FAIREA region geometry was kept, so regions were flipped (a method with the original accuracy and much lower bias was labelled "bad trade-off", a method with much lower accuracy and the same bias "win-win"); ``compute_area`` raised on most inputs. Trade-off maps made with the old code should be re-examined.
+* Example trade-off code (``examples/Fairea``, now ``callmefair.tradeoff``): regions were drawn with an inverted accuracy axis, so they were flipped (a method with the original accuracy and much lower bias was labelled "bad trade-off"); baseline and methods were normalised over different ranges; the composite fairness score made the baseline non-linear and saturating; plain-accuracy baselines on imbalanced data were invalid (mutating to the majority label raises accuracy; ``baseline_curve`` now warns); ``compute_area`` raised on most inputs. Trade-off maps made with the old code should be re-examined.
+* ``shapely`` is no longer a dependency of the library (only a dev/test extra).
 * Stroke data pipeline: the old ``stroke.csv`` merged a NearMiss-undersampled training split with untouched validation/test rows (leakage), used an age cut-off (73) tuned on the outcome labels, and integer-coded nominal features. ``work_type`` and ``smoking_status`` are now one-hot and ``age`` is 1 for 65 or older.
 
 Changed

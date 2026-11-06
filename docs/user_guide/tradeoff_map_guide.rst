@@ -1,103 +1,105 @@
 Trade-off Map Guide
 ===================
 
-The trade-off map places each bias-mitigation result (balanced accuracy, composite
-fairness score) relative to a FAIREA-style baseline: the accuracy/bias curve of a base
-model whose predictions are randomly overwritten at increasing degrees (0 to 1). The map
-answers whether a mitigation is better than simply degrading the model.
+The trade-off map implements **Fairea** (Hort et al., ESEC/FSE 2021): it asks whether a
+bias-mitigation method is better than simply degrading the original model. The walk-through is
+``examples/notebooks/04_tradeoff_map.ipynb``; the code is ``callmefair.tradeoff`` and
+``callmefair.viz.plot_tradeoff_map``.
 
-.. note::
+Method
+------
 
-   This code lives in ``examples/notebooks/fhg_examples/tradeoff.py``, not in the
-   installed ``callmefair`` package. Run from a clone of the repository with
-   ``examples/notebooks`` on ``sys.path`` and the ``examples`` extra installed (provides
-   ``shapely``); see :doc:`/user_guide/installation`. The walk-through is
-   ``examples/notebooks/04_tradeoff_map.ipynb``.
+1. **Baseline.** Train the original model and overwrite a fraction ``degree`` (0, 0.1, ..., 1)
+   of its test predictions with one label. The strategy is the label with the highest accuracy
+   at 100% mutation (ties go to the stricter curve). Results are averaged over
+   ``data_splits`` x ``repetitions`` (the paper uses 50 x 50; the default is 10 x 10).
+2. **Axes.** x is bias, ``|SPD|`` by default (``"aod"``, ``"eod"`` and ``"fair_score"`` are
+   options); y is accuracy, ``"balanced_acc"`` by default (``"acc"`` is an option). Both are
+   min-max normalised *by the baseline's range*: the original model F_OM is at (1, 1), the fully
+   mutated model F100 at (0, 0), and with a linear bias metric the baseline is close to the
+   diagonal. Methods use the same scaling and may fall outside [0, 1].
+3. **Regions** (paper Fig. 2), relative to F_OM:
 
-Steps
+   * ``win-win`` [Win-Win]: at least as accurate and no more biased;
+   * ``inverted`` [Inverted]: at least as accurate but more biased;
+   * ``lose-lose`` [Lose-Lose]: less accurate and more biased;
+   * ``good trade-off`` [Good]: less accurate, less biased, above the baseline;
+   * ``bad trade-off`` [Poor]: less accurate, less biased, below the baseline.
+
+4. **Area** (paper Fig. 3) scores a good trade-off: the polygon from the method BM to its
+   horizontal projection BM' on the baseline, along the baseline, and back to its vertical
+   projection BM''. Other regions have area 0.
+
+Why these defaults
+------------------
+
+* **Balanced accuracy.** With imbalanced labels, mutating to the majority label *raises* plain
+  accuracy (stroke, 4.9% positives: 0.726 to 0.951). Fairea requires the original model to beat
+  the constant model, so ``baseline_curve`` warns when it does not. Balanced accuracy ends at
+  0.5 for any constant model.
+* **|SPD| rather than the composite score.** The composite ``fair_score`` is non-linear (it jumps
+  by 0.2 when a metric leaves its acceptable range) and capped at 1, so its baseline bends and
+  saturates. Fairea uses a single linear group metric. ``bias="fair_score"`` stays available; read
+  its map with that caveat.
+
+Usage
 -----
-
-1. ``create_baseline(make_model, df, label, attribute, privileged_groups,
-   unprivileged_groups, data_splits=3, repetitions=3)`` trains ``make_model()`` on
-   ``data_splits`` random splits, overwrites a fraction ``degree`` of the test predictions,
-   and returns the mean ``balanced_acc`` and ``fair_score`` per (strategy, degree).
-   ``baseline_curve(baseline, "to_1")`` selects one strategy ordered by degree. The
-   documented strategy is ``"to_1"`` (overwrite with label 1); overwriting with 0 makes
-   disparate impact undefined.
-2. ``normalize(base_acc, base_bias, methods)`` rescales baseline and methods with one
-   shared range per axis and returns ``(loss, bias, methods_norm)``. Both axes are
-   "lower is better": loss = accuracy lost, bias = ``fair_score``.
-3. ``classify_region(line, methods_norm)`` returns one region per method, where
-   ``line = LineString(zip(bias, loss))`` and its first vertex is the unmutated model O
-   (paper names in brackets):
-
-   * ``"win-win"`` [Win-Win]: no more biased and no less accurate than O;
-   * ``"lose-lose"`` [Lose-Lose]: more biased and less accurate than O;
-   * ``"inverted"`` [Inverted]: more biased but more accurate than O;
-   * ``"good trade-off"`` [Good]: less biased but less accurate than O, and the baseline
-     reaches that accuracy only with at least as much bias;
-   * ``"bad trade-off"`` [Poor]: less biased but less accurate than O, and the baseline
-     reaches that accuracy with less bias.
-
-4. ``compute_area(line, point)`` returns the area between a good trade-off point and the
-   baseline (0.0 for any other region).
-
-Example
--------
-
-Baseline for logistic regression on the stroke data (protected attribute ``age``) and three
-mitigations from a grid search. Run from the repository root.
 
 .. code-block:: python
 
-    import sys
-    import pandas as pd
-    from shapely.geometry import LineString
     from sklearn.linear_model import LogisticRegression
-    from callmefair import BMGridSearch, BMInterface, BMType
+    from callmefair.tradeoff import create_baseline, tradeoff_regions
+    from callmefair.viz import plot_tradeoff_map
 
-    sys.path.insert(0, "examples/notebooks")
-    from fhg_examples.tradeoff import (baseline_curve, classify_region, compute_area,
-                                       create_baseline, normalize)
-
-    df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
-    priv, unpriv = [{"age": 1}], [{"age": 0}]
-
-    # 1. Mitigation results: one (balanced_acc, fair_score) point per method
-    bmI = BMInterface(df, label="stroke", protected=["age"])
-    bm_list = [[BMType.preReweighing], [BMType.posROC], [BMType.preDisparate]]
-    grid = BMGridSearch(bmI, LogisticRegression(max_iter=1000), bm_list, priv, unpriv)
-    rows = grid.run_single_sensitive(results_dir=None)
-    methods = {r["BM"]: (r["balanced_acc"], r["fair_score"]) for r in rows[1:]}
-
-    # 2. Baseline: overwrite a growing share of predictions with 1
     base = create_baseline(lambda: LogisticRegression(max_iter=1000), df, "stroke", "age",
-                           priv, unpriv, data_splits=3, repetitions=3)
-    curve = baseline_curve(base, "to_1")
+                           priv, unpriv, data_splits=10, repetitions=10,
+                           bmi_kwargs=dict(test_size=0.2, val_size=0.2))
+    regions = tradeoff_regions(base, rows)   # rows: BMGridSearch.run_single_sensitive(...)
+    fig = plot_tradeoff_map(base, regions)
 
-    # 3. Normalize on shared axes, classify, measure area
-    loss, bias, pts = normalize(curve.balanced_acc, curve.fair_score, methods)
-    line = LineString(zip(bias, loss))
-    regions = classify_region(line, pts)
-    for name, region in regions.items():
-        print(f"{name:15s} {region:15s} area={compute_area(line, pts[name]):.3f}")
+``create_baseline`` returns one row per (strategy, degree) with ``acc, balanced_acc, spd, aod,
+eod, fair_score``. ``tradeoff_regions`` drops ``baseline`` rows, averages repeated (model, BM)
+rows and returns ``model, BM, accuracy, bias, acc_norm, bias_norm, region, paper_region, area``.
+Building blocks: ``select_strategy``, ``baseline_curve``, ``normalize``, ``classify_region``,
+``area_polygon`` and ``compute_area``. Pass the same ``bmi_kwargs`` split settings to the
+baseline and the grid.
 
-.. code-block:: text
+The figure uses **illustrative numbers** (a made-up straight baseline and grid rows), not a run.
 
-    preReweighing   good trade-off  area=0.060
-    posROC          good trade-off  area=0.042
-    preDisparate    good trade-off  area=0.000
+.. plot::
 
-``preDisparate`` barely changes the model, so its point lies on the baseline start and its
-area is about 0. This is a reduced run (3 splits x 3 repetitions); use more for real analyses.
-Many grid results have ``fair_score`` exactly 1 (the saturated maximum); treat the regions of
-such points with caution.
+    import numpy as np
+    import pandas as pd
+    from callmefair.tradeoff import tradeoff_regions
+    from callmefair.viz import plot_tradeoff_map
 
-.. warning::
+    degree = np.round(np.linspace(0, 1, 11), 1)
+    baseline_df = pd.DataFrame({
+        "strategy": "to_1", "degree": degree,
+        "acc": 0.9 - 0.4 * degree, "balanced_acc": 0.75 - 0.25 * degree,
+        "spd": 0.40 * (1 - degree), "aod": 0.30 * (1 - degree),
+        "eod": 0.30 * (1 - degree), "fair_score": 0.60 * (1 - degree),
+    })
+    def row(model, bm, bacc, spd):
+        return {"model": model, "BM": bm, "acc": bacc + 0.1, "balanced_acc": bacc, "spd": spd,
+                "avg_odd_diff": spd, "eq_opp_diff": spd, "fair_score": spd * 1.5}
+    rows = [
+        row("LogisticRegression", "baseline", 0.75, 0.40),
+        row("LogisticRegression", "preReweighing", 0.74, 0.22),
+        row("LogisticRegression", "posROC", 0.68, 0.10),
+        row("XGBClassifier", "baseline", 0.78, 0.42),
+        row("XGBClassifier", "preDisparate", 0.77, 0.45),
+        row("XGBClassifier", "posROC", 0.66, 0.25),
+        row("XGBClassifier", "posEqqOds", 0.70, 0.05),
+    ]
+    regions_df = tradeoff_regions(baseline_df, rows)
+    fig = plot_tradeoff_map(baseline_df, regions_df)
 
-   An earlier version of this code (``examples/Fairea/fairea.py``, now removed) had three
-   bugs: baseline and methods were normalized on different scales; accuracy was inverted
-   while the original FAIREA region geometry was kept, so regions were flipped (a method with
-   the original accuracy and much lower bias was labelled "bad trade-off", and one with much
-   lower accuracy and the same bias "win-win"); and ``compute_area`` raised on most inputs.
-   Trade-off maps produced with that code should be re-examined; see :doc:`/changelog`.
+Use more splits and repetitions than a quick run for real analyses; points close to the baseline
+are ties within noise.
+
+.. note::
+
+   Earlier versions drew the regions with an inverted accuracy axis and normalised over baseline
+   and methods together, so regions were flipped. Maps made with that code should be re-examined;
+   see :doc:`/changelog`.

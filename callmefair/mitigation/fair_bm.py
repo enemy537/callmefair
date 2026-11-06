@@ -49,22 +49,24 @@ import random
 
 @contextmanager
 def _preserve_matplotlib_backend():
-    """Undo BlackBoxAuditing's import-time ``matplotlib.use('Agg')``.
+    """Stop BlackBoxAuditing from switching the matplotlib backend.
 
-    DisparateImpactRemover imports BlackBoxAuditing, which forces the Agg
-    backend; without this, plots in notebooks silently stop rendering.
+    DisparateImpactRemover imports BlackBoxAuditing, whose modules call
+    ``matplotlib.use('Agg')`` at import time. In Jupyter that silently breaks
+    inline figures for the rest of the session. While the block runs,
+    ``matplotlib.use`` is a no-op, so the user's backend is never touched.
     """
     try:
         import matplotlib
     except ImportError:
         yield
         return
-    backend = matplotlib.get_backend()
+    original_use = matplotlib.use
+    matplotlib.use = lambda *args, **kwargs: None
     try:
         yield
     finally:
-        if matplotlib.get_backend() != backend:
-            matplotlib.use(backend)
+        matplotlib.use = original_use
 
 
 def get_random_string(N: int = 7) -> str:

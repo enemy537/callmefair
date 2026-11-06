@@ -24,7 +24,6 @@ dependencies = [
     # Required at runtime by aif360 DisparateImpactRemover (BMType.preDisparate).
     "BlackBoxAuditing>=0.1.54",
     "matplotlib>=3.8,<3.11",
-    "shapely>=2.0,<2.1",
     "seaborn>=0.13,<0.14",
     "prettytable>=3.9,<4",
     "tqdm>=4.66,<5",
@@ -63,6 +62,7 @@ examples = [
 ]
 dev = [
     "callmefair[dl,examples]",
+    "shapely>=2.0,<2.1",  # test-only reference for the Fairea region tests
     "pytest",
     "jupyter",
     "ipykernel",

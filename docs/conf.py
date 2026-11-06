@@ -18,15 +18,29 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
+    'matplotlib.sphinxext.plot_directive',
 ]
 
 autodoc_member_order = 'bysource'
-# Mock the ML stack so the docs build without installing it.
+# Mock the ML stack so the docs build without installing it. numpy, pandas and matplotlib
+# are real: the plot directive draws figures with them.
 autodoc_mock_imports = [
     'tensorflow', 'keras', 'torch', 'pytorch_tabnet', 'einops', 'aif360',
     'xgboost', 'catboost', 'lightgbm', 'imblearn', 'BlackBoxAuditing',
-    'sklearn', 'scipy', 'matplotlib', 'seaborn', 'prettytable', 'tqdm',
+    'sklearn', 'scipy', 'seaborn', 'prettytable', 'tqdm',
 ]
+# Plot directive: figures are generated at build time into _build only.
+plot_include_source = True
+plot_html_show_source_link = False
+plot_html_show_formats = False
+plot_formats = [('png', 110)]
+plot_rcparams = {'figure.max_open_warning': 0}
+
+# ``callmefair.viz`` imports callmefair.util.fair_util, which needs aif360 and
+# scikit-learn only for other code paths; mock them for the plot scripts as well.
+from sphinx.ext.autodoc.mock import mock as _mock  # noqa: E402
+_mock(['aif360', 'sklearn', 'scipy']).__enter__()
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),

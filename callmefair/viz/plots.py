@@ -320,11 +320,17 @@ def plot_mitigation_effect(results, metrics=('fair_score', 'balanced_acc'), *,
 
 
 # ------------------------------------------------------------------ 5. fair-range small multiples
+# Plotting window per metric: the natural domain (DI is unbounded; cap its window).
+_METRIC_DOMAIN = {'EOD': (-1.0, 1.0), 'AOD': (-1.0, 1.0), 'SPD': (-1.0, 1.0),
+                  'DI': (0.0, 3.0), 'TI': (0.0, 1.0)}
+
+
 def plot_fair_ranges(results, *, label: str = 'BM', hue: str = 'model', axes=None):
     """Small multiples (EOD, AOD, SPD, DI, TI) showing each row against its acceptable range.
 
-    Filled dots lie inside the acceptable range, hollow dots outside; values
-    beyond the plotted window sit on the edge with an arrow.
+    Filled dots lie inside the acceptable range, hollow dots outside (labelled
+    with their value). The window covers each metric's natural domain, so only
+    values beyond it (e.g. an infinite DI) sit on the edge with an arrow.
 
     Args:
         results: list of dicts or DataFrame.
@@ -334,6 +340,7 @@ def plot_fair_ranges(results, *, label: str = 'BM', hue: str = 'model', axes=Non
     Returns:
         The matplotlib Figure.
     """
+    from matplotlib.ticker import MaxNLocator
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
     df = _frame(results).reset_index(drop=True)
@@ -341,7 +348,8 @@ def plot_fair_ranges(results, *, label: str = 'BM', hue: str = 'model', axes=Non
     rows = _slots(df[label])                       # one row per label
     fig, axs = _axes(axes, 5, (15.5, max(3.2, 0.42 * len(rows) + 2.0)), sharey=True)
     slots = _slots(df[hue]) if hue in df else {None: 0}
-    cols = [_style.color(slots[v]) for v in (df[hue] if hue in df else [None] * len(df))]
+    hue_slot = [slots[v] for v in (df[hue] if hue in df else [None] * len(df))]
+    cols = [_style.color(k) for k in hue_slot]
     # dodge the hue vertically inside each row
     ypos = np.array([rows[b] + (slots[h] - (len(slots) - 1) / 2) * 0.28
                      for b, h in zip(df[label], df[hue] if hue in df else [None] * len(df))])
@@ -350,9 +358,10 @@ def plot_fair_ranges(results, *, label: str = 'BM', hue: str = 'model', axes=Non
         half, centre = (hi - lo) / 2, (hi + lo) / 2
         v = df[key].to_numpy(float)
         finite = v[np.isfinite(v)]
+        dom_lo, dom_hi = _METRIC_DOMAIN[name]        # window never clips real values in-domain
         vmin = min(lo - 0.3 * half, finite.min()) if len(finite) else lo
         vmax = max(hi + 0.3 * half, finite.max()) if len(finite) else hi
-        left, right = max(vmin, centre - 4 * half), min(vmax, centre + 4 * half)
+        left, right = max(vmin, dom_lo), min(vmax, dom_hi)
         pad = 0.08 * (right - left)
         left, right = left - pad, right + pad
         ax.axvspan(lo, hi, color=_style.GOOD, alpha=0.13, lw=0, zorder=1)
@@ -369,7 +378,13 @@ def plot_fair_ranges(results, *, label: str = 'BM', hue: str = 'model', axes=Non
                 x, edge = left + pad / 2, '<'
             ax.plot([x], [ypos[i]], marker=edge or 'o', ms=7, color=cols[i], zorder=3,
                     mfc=cols[i] if inside else 'none', mew=1.3, ls='')
+            if not inside:                           # label only the out-of-range values
+                above = hue_slot[i] % 2 == 0          # alternate by model to avoid collisions
+                ax.annotate(f'{v[i]:.2f}', (x, ypos[i]), xytext=(0, 6 if above else -6),
+                            textcoords='offset points', ha='center', va='bottom' if above else 'top',
+                            fontsize=7, color=_style.INK_SECONDARY)
         ax.set_xlim(left, right)
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune='both'))  # no edge-label collisions
         ax.set_title(f'{name}', fontsize=10)
         ax.set_xlabel(_label(key).split(' (')[0], fontsize=8)
         ax.grid(False, axis='y')

@@ -174,3 +174,19 @@ def test_threshold_sweep(grid):
 def test_import_callmefair_does_not_import_matplotlib():
     code = "import sys, callmefair; sys.exit(int('matplotlib' in sys.modules))"
     assert subprocess.run([sys.executable, "-c", code]).returncode == 0
+
+
+def test_fair_ranges_shows_values_far_outside_the_band():
+    """Regression: values beyond ~4x the acceptable band were clipped to edge arrows,
+    so a strongly biased baseline looked like it had no data points."""
+    from callmefair.viz import plot_fair_ranges
+    row = {'model': 'LR', 'BM': 'baseline', 'eq_opp_diff': -0.67, 'avg_odd_diff': -0.78,
+           'spd': -0.89, 'disparate_impact': 0.11, 'theil_idx': 0.06, 'fair_score': 1.0}
+    fig = plot_fair_ranges([row])
+    for ax, value in zip(fig.axes[:5], [-0.67, -0.78, -0.89, 0.11, 0.06]):
+        lo, hi = ax.get_xlim()
+        assert lo < value < hi
+        markers = [l.get_marker() for l in ax.lines if len(l.get_xdata()) == 1]
+        assert '<' not in markers and '>' not in markers
+    texts = [t.get_text() for t in fig.axes[0].texts]
+    assert '-0.67' in texts

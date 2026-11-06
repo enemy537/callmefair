@@ -43,6 +43,7 @@ In fairness scores, 0 is perfectly fair and higher means more biased.
    user_guide/bias_search_guide
    user_guide/grid_search_guide
    user_guide/tradeoff_map_guide
+   user_guide/visualization_guide
    user_guide/utility_guide
    user_guide/hardware_guide
 

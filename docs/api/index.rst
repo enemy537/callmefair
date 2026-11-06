@@ -7,3 +7,5 @@ API Reference
    util
    mitigation
    search
+   viz
+   tradeoff
