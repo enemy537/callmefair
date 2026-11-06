@@ -76,9 +76,10 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
     "unfair" defaults (EOD/AOD/SPD/TI = 1.0, DI = 0.1).
 
     Returns:
-        dict with 'raw_score', 'overall_score' (rounded to 3 decimals),
-        'metric_evaluations' (bool per metric), 'deviations' (rounded) and
-        'is_fair' (all metrics in range).
+        dict with 'raw_score', 'overall_score' (rounded to 3 decimals, clipped to
+        [0, 1]), 'uncapped_score' (``raw_score`` on the same scale without the clip;
+        exceeds 1 for strongly biased models), 'metric_evaluations' (bool per metric),
+        'deviations' (rounded) and 'is_fair' (all metrics in range).
     """
     values = {name: _sanitize_metric(name, v)
               for name, v in (('EOD', EOD), ('AOD', AOD), ('SPD', SPD), ('DI', DI), ('TI', TI))}
@@ -96,6 +97,7 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
     return {
         'raw_score': raw_score,
         'overall_score': round(min(1.0, max(0.0, raw_score / max_score)), 3),
+        'uncapped_score': raw_score / max_score,
         'metric_evaluations': evaluations,
         'deviations': {k: round(v, 3) for k, v in deviations.items()},
         'is_fair': all(evaluations.values()),

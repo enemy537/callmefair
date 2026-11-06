@@ -117,7 +117,7 @@ def test_results_csv_written_with_one_header(current):
     rows, cwd = current
     (csv_file,) = (cwd / "results").glob("experiment_*.csv")
     lines = csv_file.read_text().splitlines()
-    assert lines[0].split(",") == ["model", "BM", *NUMERIC]
+    assert lines[0].split(",") == ["model", "BM", *NUMERIC, "fair_score_uncapped"]
     assert len(lines) == len(rows) + 1
 
 

@@ -173,7 +173,9 @@ class BMGridSearch:
     def _record(self, bm_name: str) -> dict:
         row = {'model': _model_name(self.model), 'BM': bm_name}
         row.update(self.bmM.get_report())
-        row['fair_score'] = self.bmM.get_score()['overall_score']
+        score = self.bmM.get_score()
+        row['fair_score'] = score['overall_score']
+        row['fair_score_uncapped'] = score['uncapped_score']
         return row
 
     def _run_combination(self, c_set: list[BMType], in_type: BMType | None) -> dict:

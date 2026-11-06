@@ -39,7 +39,7 @@ DEFAULT_ODDS = {"to_0": (1.0, 0.0), "to_1": (0.0, 1.0)}   # P(overwrite with 0),
 # Metric names -> grid-search column; bias metrics are taken in absolute value (paper 3.1).
 ACCURACY_METRICS = {"acc": "acc", "balanced_acc": "balanced_acc"}
 BIAS_METRICS = {"spd": "spd", "aod": "avg_odd_diff", "eod": "eq_opp_diff",
-                "fair_score": "fair_score"}
+                "fair_score": "fair_score", "fair_score_uncapped": "fair_score_uncapped"}
 
 
 # ---------------------------------------------------------------- 1. baseline
@@ -82,11 +82,16 @@ def create_baseline(make_model: Callable[[], object], df: pd.DataFrame, label: s
                     mutated.labels = _mutate(original, degree, p, rng)
                     metrics.set_pos_pred(mutated)
                     rows.append({"strategy": strategy, "degree": degree,
-                                 **_metric_values({**metrics.get_report(),
-                                                   "fair_score": metrics.get_score()["overall_score"]})})
+                                 **_metric_values(_report_with_scores(metrics))})
     metric_cols = list(ACCURACY_METRICS) + list(BIAS_METRICS)
     return (pd.DataFrame(rows).groupby(["strategy", "degree"], as_index=False, sort=False)
             [metric_cols].mean())
+
+
+def _report_with_scores(metrics) -> dict:
+    score = metrics.get_score()
+    return {**metrics.get_report(), "fair_score": score["overall_score"],
+            "fair_score_uncapped": score["uncapped_score"]}
 
 
 def _metric_values(report: Mapping) -> dict:
@@ -234,8 +239,10 @@ def tradeoff_regions(baseline: pd.DataFrame, results, *, strategy: str | None = 
         strategy: mutation strategy; default = Fairea's rule (:func:`select_strategy`).
         accuracy: ``'balanced_acc'`` (default; required for imbalanced labels) or
             ``'acc'`` (the Fairea paper's choice for its balanced benchmark datasets).
-        bias: ``'spd'`` (default), ``'aod'``, ``'eod'`` or ``'fair_score'`` (composite 𝓕;
-            non-linear and capped at 1, so its baseline is not a straight line).
+        bias: ``'spd'`` (default), ``'aod'``, ``'eod'``, ``'fair_score_uncapped'``
+            (composite 𝓕 without the clip at 1: near-linear baseline, recommended for
+            𝓕) or ``'fair_score'`` (𝓕 as reported; clipped at 1, so strongly biased
+            models all sit at 1 and the baseline has a vertical plateau).
 
     Returns:
         DataFrame with ``model, BM, accuracy, bias, acc_norm, bias_norm, region,

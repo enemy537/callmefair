@@ -37,10 +37,13 @@ Why these defaults
   accuracy (stroke, 4.9% positives: 0.726 to 0.951). Fairea requires the original model to beat
   the constant model, so ``baseline_curve`` warns when it does not. Balanced accuracy ends at
   0.5 for any constant model.
-* **|SPD| rather than the composite score.** The composite ``fair_score`` is non-linear (it jumps
-  by 0.2 when a metric leaves its acceptable range) and capped at 1, so its baseline bends and
-  saturates. Fairea uses a single linear group metric. ``bias="fair_score"`` stays available; read
-  its map with that caveat.
+* **The composite score 𝓕 on the bias axis.** ``fair_score`` is clipped at 1, so a strongly
+  biased model (and its first mutation degrees) all sit at 1: the baseline gets a vertical
+  plateau and still-biased mitigations hide their improvement. Use
+  ``bias="fair_score_uncapped"`` (the same formula without the clip; every grid row has a
+  ``fair_score_uncapped`` column): its baseline is close to the diagonal, with small bends where
+  a metric enters its acceptable range. ``|SPD|`` (default), ``|AOD|`` and ``|EOD|`` are single
+  linear metrics, as in the Fairea paper.
 
 Usage
 -----

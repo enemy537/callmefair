@@ -1,4 +1,4 @@
-"""Fairea trade-off map (paper Fig. 2): baseline, five regions, method points, areas."""
+"""Fairea trade-off map (paper Fig. 2): baseline, five regions and method points."""
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ from callmefair.viz import _style
 _TINT = {"win-win": "#ffffff", "inverted": "#e9e8e4", "lose-lose": "#c9c8c3",
          "good trade-off": "#dff0d4", "bad trade-off": "#f6e3c8"}
 _AXIS_NAME = {"acc": "accuracy", "balanced_acc": "balanced accuracy", "spd": "|SPD|",
-              "aod": "|AOD|", "eod": "|EOD|", "fair_score": "fairness score 𝓕"}
+              "aod": "|AOD|", "eod": "|EOD|", "fair_score": r"fairness score $\mathcal{F}$",
+              "fair_score_uncapped": r"uncapped fairness score $\mathcal{F}$"}
 
 
 def plot_tradeoff_map(baseline, regions, *, ax=None, label: bool = True):
@@ -32,8 +33,7 @@ def plot_tradeoff_map(baseline, regions, *, ax=None, label: bool = True):
         The matplotlib Figure.
     """
     from matplotlib.lines import Line2D
-    from matplotlib.patches import Patch
-    from callmefair.tradeoff import (PAPER_NAMES, area_polygon, baseline_curve, normalize)
+    from callmefair.tradeoff import PAPER_NAMES, baseline_curve, normalize
 
     meta = regions.attrs or {}
     acc_name, bias_name = meta.get("accuracy", "balanced_acc"), meta.get("bias", "spd")
@@ -75,15 +75,11 @@ def plot_tradeoff_map(baseline, regions, *, ax=None, label: bool = True):
     ax.annotate("original model (F_OM)", (o_bias, o_acc), xytext=(8, 6),
                 textcoords="offset points", fontsize=8, color=_style.INK)
 
-    # method points, area of good trade-offs, selective labels
+    # method points and selective labels (largest trade-off areas)
     models = list(dict.fromkeys(regions["model"]))
     many = len(models) > 3
     for i, m in enumerate(models):
         sub = regions[regions["model"] == m]
-        for _, r in sub.iterrows():
-            poly = area_polygon(b_bias, b_acc, (r["acc_norm"], r["bias_norm"]))
-            if poly is not None:
-                ax.fill(poly[:, 0], poly[:, 1], color=_style.color(i), alpha=0.15, lw=0, zorder=2)
         ax.plot(sub["bias_norm"], sub["acc_norm"], ls="", marker=_style.marker(i) if many else "o",
                 ms=7, color=_style.color(i), mec=_style.SURFACE, mew=1.0, zorder=4)
     ax.set_xlim(x0, x1)
@@ -100,7 +96,6 @@ def plot_tradeoff_map(baseline, regions, *, ax=None, label: bool = True):
                       label=f"baseline (mutate to {meta.get('strategy', '?').replace('to_', '')})")]
     handles += [Line2D([], [], ls="", marker=_style.marker(i) if many else "o", ms=7,
                        color=_style.color(i), label=str(m)) for i, m in enumerate(models)]
-    handles += [Patch(facecolor=_style.color(0), alpha=0.15, label="trade-off area")]
     ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=4,
               fontsize=8, frameon=False)
     return fig

@@ -22,7 +22,16 @@ def test_perfect_fairness_is_zero():
     r = calculate_fairness_score(0.0, 0.0, 0.0, 1.0, 0.0)
     assert r['overall_score'] == 0.0 and r['raw_score'] == 0.0
     assert r['is_fair'] and all(r['metric_evaluations'].values())
-    assert set(r) == {'raw_score', 'overall_score', 'metric_evaluations', 'deviations', 'is_fair'}
+    assert set(r) == {'raw_score', 'overall_score', 'uncapped_score', 'metric_evaluations',
+                      'deviations', 'is_fair'}
+    assert r['uncapped_score'] == 0.0
+
+
+def test_uncapped_score_keeps_information_beyond_the_cap():
+    a = calculate_fairness_score(-0.6, -0.6, -0.8, 0.1, 0.1)
+    b = calculate_fairness_score(-0.9, -0.9, -0.95, 0.05, 0.1)
+    assert a['overall_score'] == b['overall_score'] == 1.0          # both clipped
+    assert 1.0 < a['uncapped_score'] < b['uncapped_score']           # still ordered
 
 
 @pytest.mark.parametrize("bad", [None, float('nan'), float('inf'), "abc", " ", True, [], 5.0])
