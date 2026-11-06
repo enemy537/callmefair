@@ -7,8 +7,8 @@ the package first (see :doc:`/user_guide/installation`).
 Run a grid search
 -----------------
 
-The example uses ``examples/data/stroke_pre/stroke.csv`` (label ``stroke``,
-protected attribute ``age``, all features numeric) and a logistic regression.
+The example uses ``examples/data/stroke_pre/stroke.csv`` (5,109 rows, label ``stroke``,
+protected attribute ``age`` where 1 = 65 or older, all features numeric) and a logistic regression.
 It evaluates three mitigation combinations: pre-processing only,
 post-processing only, and both.
 
@@ -31,7 +31,7 @@ post-processing only, and both.
    ]
    grid = BMGridSearch(bmI, LogisticRegression(max_iter=1000), bm_list,
                        privileged_group, unprivileged_group)
-   rows = grid.run_single_sensitive()
+   rows = grid.run_single_sensitive(results_dir=None)  # None: skip the CSV log
 
    results = pd.DataFrame(rows)
    print(results[["BM", "balanced_acc", "spd", "fair_score"]].round(3).to_string())
@@ -41,14 +41,15 @@ Output:
 .. code-block:: text
 
                                BM  balanced_acc    spd  fair_score
-   0                     baseline         0.678 -0.744       1.000
-   1                preReweighing         0.587 -0.120       0.532
-   2                posCalibrated         0.619 -0.483       1.000
-   3  preReweighing posCalibrated         0.537  0.019       0.894
+   0                     baseline         0.695 -0.842       1.000
+   1                preReweighing         0.575 -0.094       0.483
+   2                posCalibrated         0.500  0.000       0.529
+   3  preReweighing posCalibrated         0.500  0.000       0.529
 
 ``BMInterface`` splits the data (80/10/10 train/validation/test, stratified)
 and scales it. The first row is always the unmitigated ``baseline``. The rows
-are also written to ``results/experiment_<timestamp>.csv``.
+are written to ``results/experiment_<timestamp>.csv`` unless you pass
+``results_dir=None`` as above.
 
 Reading the result
 ------------------
@@ -56,9 +57,11 @@ Reading the result
 - ``fair_score`` is in [0, 1]; **lower is fairer** (0 means all fairness
   metrics are at their optimum). It is computed from the test split.
 - ``balanced_acc`` measures predictive quality; mitigation usually costs some
-  of it. Here ``preReweighing`` cuts ``fair_score`` from 1.0 to 0.53 at a cost
-  of about 0.09 balanced accuracy.
-- The stroke test split has only 189 rows, so single-run metrics are noisy.
+  of it. Here ``preReweighing`` cuts ``fair_score`` from 1.0 to 0.48 at a cost
+  of about 0.12 balanced accuracy.
+- ``posCalibrated`` collapses to a constant prediction here (balanced accuracy
+  0.5), because only 4.9% of the stroke rows are positive. The test split has
+  511 rows, so single-run metrics are noisy.
 
 Next steps
 ----------

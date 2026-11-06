@@ -191,11 +191,11 @@ class BMGridSearch:
 
     # ---- public ----------------------------------------------------------------------
 
-    def run_single_sensitive(self, results_dir: str = 'results') -> list[dict]:
+    def run_single_sensitive(self, results_dir: str | None = 'results') -> list[dict]:
         """Evaluate the baseline and every combination in ``bm_list``.
 
-        Rows are written to ``<results_dir>/experiment_<timestamp>.csv`` and
-        also returned (one dict per row, baseline first).
+        Returns one dict per row (baseline first). Rows are also written to
+        ``<results_dir>/experiment_<timestamp>.csv`` unless ``results_dir`` is None.
 
         Raises:
             ValueError: If an in-processing technique is combined with a classifier.
@@ -223,6 +223,7 @@ class BMGridSearch:
             if self.is_model_in:
                 release_model(self.model)
 
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        csvLogger(f'experiment_{stamp}', path=results_dir)(rows)
+        if results_dir is not None:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            csvLogger(f'experiment_{stamp}', path=results_dir)(rows)
         return rows

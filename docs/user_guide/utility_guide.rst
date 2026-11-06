@@ -97,9 +97,9 @@ the **test** split with that threshold.
 
 .. code-block:: text
 
-   (1505, 10) (189, 10) (189, 10)
-   threshold: 0.09
-   {'balanced_acc': 0.678, 'acc': 0.677, 'precision': 0.243, 'recall': 0.68, 'f1': 0.358, 'mcc': 0.188, 'eq_opp_diff': -0.615, 'avg_odd_diff': -0.685, 'spd': -0.744, 'disparate_impact': 0.256, 'theil_idx': 0.1}
+   (4087, 17) (511, 17) (511, 17)
+   threshold: 0.03
+   {'balanced_acc': 0.695, 'acc': 0.708, 'precision': 0.108, 'recall': 0.68, 'f1': 0.186, 'mcc': 0.08, 'eq_opp_diff': -0.8, 'avg_odd_diff': -0.822, 'spd': -0.842, 'disparate_impact': 0.158, 'theil_idx': 0.072}
    1.0
 
 ``get_report()`` keys:

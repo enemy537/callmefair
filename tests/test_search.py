@@ -243,3 +243,14 @@ def test_default_workers_use_performance_cores(monkeypatch, stroke):
     assert BaseSearch(stroke, "stroke").n_threads == 6
     monkeypatch.setattr(device, "performance_cores", lambda: 32)
     assert BaseSearch(stroke, "stroke").n_threads == 8
+
+
+def test_progress_false_disables_tqdm(monkeypatch, stroke):
+    flags = []
+    real_tqdm = _search_base.tqdm
+    monkeypatch.setattr(_search_base, "tqdm",
+                        lambda it, **kw: flags.append(kw.get("disable")) or real_tqdm(it, **kw))
+    for progress in (False, True):
+        search = BiasSearch(stroke, "stroke", ATTRIBUTES, n_threads=1, progress=progress)
+        search.evaluate_attribute("gender", iterate=1)
+    assert flags == [True, False]

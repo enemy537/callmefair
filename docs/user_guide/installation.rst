@@ -63,6 +63,9 @@ Notebooks and verification
 
    python -m ipykernel install --user --name callmefair
 
+The example notebooks are described in :doc:`/user_guide/examples`; raw data for
+reproducing their preprocessing is described in ``examples/data/raw/README.md``.
+
 .. code-block:: python
 
    import callmefair

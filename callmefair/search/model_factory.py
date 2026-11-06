@@ -76,6 +76,7 @@ def _build_cat(x, y, w, n_jobs):
     from catboost import CatBoostClassifier
     model = CatBoostClassifier(eval_metric="Accuracy", depth=4, learning_rate=0.01,
                                iterations=10, thread_count=n_jobs, verbose=False,
+                               allow_writing_files=False,
                                **device.catboost_params())
     return positive_proba(model.fit(x, y))
 

@@ -21,9 +21,13 @@ from sklearn.preprocessing import StandardScaler
 
 # Value used for a metric that is missing/invalid; pushes the score towards "unfair".
 _UNFAIR_DEFAULTS = {'EOD': 1.0, 'AOD': 1.0, 'SPD': 1.0, 'DI': 0.1, 'TI': 1.0}
-_OPTIMAL = {'EOD': 0.0, 'AOD': 0.0, 'SPD': 0.0, 'DI': 1.0, 'TI': 0.0}
-_RANGES = {'EOD': (-0.1, 0.1), 'AOD': (-0.1, 0.1), 'SPD': (-0.1, 0.1),
+# Public: acceptable range and optimum of each metric (used by plots too).
+METRIC_OPTIMA = {'EOD': 0.0, 'AOD': 0.0, 'SPD': 0.0, 'DI': 1.0, 'TI': 0.0}
+METRIC_RANGES = {'EOD': (-0.1, 0.1), 'AOD': (-0.1, 0.1), 'SPD': (-0.1, 0.1),
            'DI': (0.8, 1.2), 'TI': (0.0, 0.25)}
+# Keys of `BMMetrics.get_report()` -> short metric names above.
+REPORT_KEY_TO_METRIC = {'eq_opp_diff': 'EOD', 'avg_odd_diff': 'AOD', 'spd': 'SPD',
+                        'disparate_impact': 'DI', 'theil_idx': 'TI'}
 # Deviation from the optimum is divided by these (the half-width of each range).
 _DEVIATION_SCALE = {'EOD': 0.1, 'AOD': 0.1, 'SPD': 0.1, 'DI': 0.2, 'TI': 0.25}
 # Plausible domain of each metric; values outside are treated as invalid.
@@ -79,8 +83,8 @@ def calculate_fairness_score(EOD: float, AOD: float, SPD: float, DI: float, TI: 
     values = {name: _sanitize_metric(name, v)
               for name, v in (('EOD', EOD), ('AOD', AOD), ('SPD', SPD), ('DI', DI), ('TI', TI))}
 
-    evaluations = {n: _RANGES[n][0] <= v <= _RANGES[n][1] for n, v in values.items()}
-    deviations = {n: abs(v - _OPTIMAL[n]) / _DEVIATION_SCALE[n] for n, v in values.items()}
+    evaluations = {n: METRIC_RANGES[n][0] <= v <= METRIC_RANGES[n][1] for n, v in values.items()}
+    deviations = {n: abs(v - METRIC_OPTIMA[n]) / _DEVIATION_SCALE[n] for n, v in values.items()}
 
     raw_score = 0.0
     for name, in_range in evaluations.items():
@@ -413,6 +417,50 @@ class BMMetrics:
                 'recall': recall, 'f1': f1, 'mcc': mcc, 'eq_opp_diff': eq_opp_diff,
                 'avg_odd_diff': avg_odd_diff, 'spd': spd,
                 'disparate_impact': disparate_impact, 'theil_idx': theil_idx}
+
+    def threshold_curve(self) -> pd.DataFrame:
+        """Validation-split metrics at every candidate threshold.
+
+        Columns: threshold, balanced_acc, spd, disparate_impact, eq_opp_diff, using
+        the same positive rule as the threshold search (`>` for probability
+        arrays, `>=` for in-processing datasets) and aif360's definitions
+        (unprivileged minus privileged; DI is the ratio). Undefined values are NaN.
+        """
+        truth = self.bmI.get_val_BLD()
+        y, w = truth.labels.ravel(), truth.instance_weights
+        pos, neg = y == truth.favorable_label, y == truth.unfavorable_label
+        everyone = np.ones_like(pos)
+        priv = self._group_mask(truth, self.privileged_group)
+        unpriv = self._group_mask(truth, self.unprivileged_group)
+        scores = self._positive_scores(self.pred_val).ravel()
+
+        def rate(mask, pred_pos, base):
+            den = np.sum(w[mask & base], dtype=np.float64)
+            return np.sum(w[mask & base & pred_pos], dtype=np.float64) / den if den else np.nan
+
+        rows = []
+        for t in self.class_threshold:
+            pp = scores >= t if self.in_mode else scores > t
+            tpr, tnr = rate(everyone, pp, pos), 1 - rate(everyone, pp, neg)
+            sr_p, sr_u = rate(priv, pp, everyone), rate(unpriv, pp, everyone)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                di = np.float64(sr_u) / np.float64(sr_p)
+            rows.append((t, 0.5 * (tpr + tnr), sr_u - sr_p, di,
+                         rate(unpriv, pp, pos) - rate(priv, pp, pos)))
+        return pd.DataFrame(rows, columns=['threshold', 'balanced_acc', 'spd',
+                                           'disparate_impact', 'eq_opp_diff'])
+
+    @staticmethod
+    def _group_mask(bld: BinaryLabelDataset, groups: list[dict]) -> np.ndarray:
+        """Boolean mask of the rows matching any dict in `groups`."""
+        names = list(bld.protected_attribute_names)
+        mask = np.zeros(len(bld.labels), dtype=bool)
+        for g in groups:
+            m = np.ones(len(mask), dtype=bool)
+            for k, v in g.items():
+                m &= bld.protected_attributes[:, names.index(k)] == v
+            mask |= m
+        return mask
 
     def get_score(self) -> dict:
         """`calculate_fairness_score` of the current fairness metrics."""

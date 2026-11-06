@@ -65,15 +65,18 @@ class BaseSearch:
         n_threads: parallel workers (default: performance cores, at most 8).
         backend: 'process' or 'thread' for parallel iterations.
         random_state: base seed; iteration ``i`` splits with ``random_state + i``.
+        progress: show tqdm progress bars (default True).
     """
 
     def __init__(self, df: pd.DataFrame, label_name: str, n_threads: int | None = None,
-                 backend: str = "process", random_state: int = 42):
+                 backend: str = "process", random_state: int = 42,
+                 progress: bool = True):
         self.df = df.copy(deep=True)
         self.label_name = label_name
         self.n_threads = (min(8, device.performance_cores()) if n_threads is None
                           else max(1, int(n_threads)))
         self.backend = backend
+        self.progress = progress
         self.random_state = random_state
         self.optimizer = TrainingOptimizer(backend=backend, max_workers=self.n_threads)
 
@@ -110,7 +113,8 @@ class BaseSearch:
             mode = "sequential"
 
         totals = dict.fromkeys(SCORE_KEYS, 0.0)
-        for scores in tqdm(results, total=iterate, desc=f"Training {model_name} models ({mode})"):
+        for scores in tqdm(results, total=iterate, disable=not self.progress,
+                           desc=f"Training {model_name} models ({mode})"):
             totals["raw"] += scores["raw_score"]
             totals["overall"] += scores["overall_score"]
             totals["balanced_acc"] += scores["balanced_accuracy"]

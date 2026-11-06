@@ -169,6 +169,14 @@ def test_in_processing_with_post_processing_runs(monkeypatch, tmp_path):
     assert rows[1]["BM"] == "inMeta posEqqOds"
 
 
+def test_results_dir_none_writes_nothing(monkeypatch, tmp_path):
+    from callmefair.mitigation.fair_bm import BMType
+    monkeypatch.chdir(tmp_path)
+    grid, _ = _stub_bmi_grid(monkeypatch, [[BMType.inMeta]])
+    rows = grid.run_single_sensitive(results_dir=None)
+    assert len(rows) == 2 and list(tmp_path.iterdir()) == []
+
+
 def test_in_processing_with_classifier_is_rejected(tmp_path):
     from sklearn.linear_model import LogisticRegression
     from callmefair.mitigation.fair_bm import BMType
@@ -381,3 +389,20 @@ def test_aggregate_csv_files_delete_sources_flag(tmp_path):
         aggregate_csv_files({str(tmp_path)!r}, {str(tmp_path / "agg" / "out.csv")!r}, num_processes=1)
     """, tmp_path)
     assert not (tmp_path / "a.csv").exists() and not (tmp_path / "b.csv").exists()
+
+
+def test_pre_dr_keeps_matplotlib_backend(tmp_path):
+    """Regression: BlackBoxAuditing (used by preDisparate) forced the Agg backend,
+    so notebook plots silently stopped rendering after preDisparate."""
+    code = textwrap.dedent(f"""
+        import matplotlib
+        matplotlib.use("svg")                       # any non-Agg backend
+        import pandas as pd
+        from callmefair import BMInterface, BMManager
+        df = pd.read_csv({str(STROKE)!r})
+        bmI = BMInterface(df, "stroke", ["age"])
+        BMManager(bmI, [{{"age": 1}}], [{{"age": 0}}]).pre_DR("age")
+        assert matplotlib.get_backend() == "svg", matplotlib.get_backend()
+    """)
+    proc = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, capture_output=True, timeout=300)
+    assert proc.returncode == 0, proc.stderr.decode()[-1500:]

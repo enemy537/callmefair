@@ -34,6 +34,7 @@ In fairness scores, 0 is perfectly fair and higher means more biased.
 
    user_guide/installation
    user_guide/quickstart
+   user_guide/examples
 
 .. toctree::
    :maxdepth: 1

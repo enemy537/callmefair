@@ -39,6 +39,8 @@ uv pip install "callmefair[dl]"
 
 See the [documentation](https://callmefair.readthedocs.io/en/latest/) for installation details (macOS, CUDA), guides and the API reference.
 
+Example notebooks (run in order) are in `examples/notebooks/`; raw data for reproducing their preprocessing is described in `examples/data/raw/README.md`.
+
 ## Results <a name="results"></a>
 
 *The results below are taken from the paper.*

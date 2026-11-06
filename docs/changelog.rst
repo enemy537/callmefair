@@ -18,11 +18,15 @@ Fixed
 * ``inMeta`` naming and state reset.
 * LightGBM segfault on macOS when torch was loaded first.
 * Typo in the packaging dependencies.
+* Example trade-off code (``examples/Fairea``, replaced by ``fhg_examples.tradeoff``): baseline and methods were normalized on different scales; accuracy was inverted while the upstream FAIREA region geometry was kept, so regions were flipped (a method with the original accuracy and much lower bias was labelled "bad trade-off", a method with much lower accuracy and the same bias "win-win"); ``compute_area`` raised on most inputs. Trade-off maps made with the old code should be re-examined.
+* Stroke data pipeline: the old ``stroke.csv`` merged a NearMiss-undersampled training split with untouched validation/test rows (leakage), used an age cut-off (73) tuned on the outcome labels, and integer-coded nominal features. ``work_type`` and ``smoking_status`` are now one-hot and ``age`` is 1 for 65 or older.
 
 Changed
 ~~~~~~~
 
 * ``csvLogger`` output uses a new file name format (``experiment_<timestamp>``).
+* CatBoost no longer writes a ``catboost_info/`` folder (``allow_writing_files=False``).
+* ``examples/data/stroke_pre/stroke.csv`` was replaced: 5,109 rows x 18 columns, 4.87% positive (was 1,883 x 11, 13.2%). ``stroke_age_ever_married*.csv`` were removed. Documentation numbers were regenerated.
 * ``BlackBoxAuditing`` is a required dependency (needed by ``preDisparate``).
 * ``import callmefair`` is lazy and no longer loads TensorFlow, PyTorch or AIF360.
 * TabNet runs on CUDA or CPU; MPS is not used.
@@ -34,6 +38,10 @@ Added
 * ``register_model`` for the bias search model registry.
 * ``register_adapter`` for the grid search model adapter registry.
 * ``delete_sources`` argument of ``aggregate_csv_files``.
+* ``BMGridSearch.run_single_sensitive(results_dir=None)`` skips CSV logging.
+* ``progress=False`` on ``BiasSearch`` disables the tqdm bars.
+* Example notebook series ``00`` to ``05`` and the ``fhg_examples`` helper package (datasets, preprocessing, trade-off map); the preprocessing reproduces the shipped CSVs from raw files (``examples/data/raw/README.md``).
+* Models registered in a notebook are not visible to worker processes; use ``BiasSearch(..., backend="thread")`` for them.
 * Installation extras ``dl``, ``mac``, ``cuda``, ``examples`` and ``dev``.
 
 Removed

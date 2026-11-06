@@ -12,7 +12,7 @@ Evaluating attributes
 ---------------------
 
 ``BiasSearch(df, label_name, attribute_names, n_threads=None, backend='process',
-random_state=42)``. Features must be numeric and the label binary (1 = favorable).
+random_state=42, progress=True)``; ``progress=False`` disables the tqdm bars. Features must be numeric and the label binary (1 = favorable).
 
 .. code-block:: python
 
@@ -30,10 +30,10 @@ random_state=42)``. Features must be numeric and the label binary (1 = favorable
     +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
     |   Attribute    | Raw Fairness Score | Normalized Fairness score | Balanced Accuracy  | Privileged N | Unprivileged N |
     +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
-    |      age       | 4.611407634682066  |            1.0            | 0.775399889685604  |     290      |      1593      |
-    |  ever_married  | 3.5903379558107154 |            1.0            | 0.7137618636755825 |     1298     |      585       |
-    | Residence_type | 1.257473275697019  |     0.6493333333333333    | 0.7362198933627505 |     950      |      933       |
-    |     gender     | 1.043218147875954  |     0.5670000000000001    | 0.6975914690200403 |     760      |      1123      |
+    |      age       | 5.319867266254743  |            1.0            | 0.7421186618717485 |     1027     |      4082      |
+    |  ever_married  | 2.3062406972821563 |     0.9786666666666667    | 0.7406048023331975 |     3353     |      1756      |
+    | Residence_type | 0.4122357793863487 |     0.22899999999999998   | 0.7590800677220431 |     2596     |      2513      |
+    |     gender     | 0.2703647959285663 |            0.15           | 0.7624414537994785 |     2115     |      2994      |
     +----------------+--------------------+---------------------------+--------------------+--------------+----------------+
 
 ``evaluate_average`` returns ``(table, PrettyTable)``; ``table`` is a list of rows (header
@@ -114,8 +114,11 @@ sklearn-style classifier). Register it with ``register_model``; pass
         search = BiasSearch(df, "stroke", ["age", "gender"])
         print(search.evaluate_average(iterate=2, model_name="rf")[1])
 
-Output (columns as above): ``age`` raw 4.41 / normalized 1.0, ``gender`` raw 0.77 /
-normalized 0.43.
+Worker processes cannot see models registered in a notebook or ``__main__``. For those use
+``BiasSearch(..., backend="thread")``, or define the builder in an importable module.
+
+Output (columns as above): ``age`` raw 4.30 / normalized 1.0, ``gender`` raw 0.46 /
+normalized 0.26.
 
 Interpretation
 --------------

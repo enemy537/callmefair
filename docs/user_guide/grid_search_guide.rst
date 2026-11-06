@@ -47,7 +47,7 @@ Building ``bm_list`` and running
 
    grid = BMGridSearch(bmI, LogisticRegression(max_iter=1000), bm_list,
                        privileged_group, unprivileged_group)
-   rows = grid.run_single_sensitive(results_dir="results")
+   rows = grid.run_single_sensitive(results_dir=None)  # None: no CSV
 
    res = pd.DataFrame(rows)
    print(res[["BM", "balanced_acc", "spd", "fair_score"]].round(3).to_string())
@@ -56,15 +56,15 @@ Building ``bm_list`` and running
 .. code-block:: text
 
                                BM  balanced_acc    spd  fair_score
-   0                     baseline         0.678 -0.744       1.000
-   1  preReweighing posCalibrated         0.537  0.019       0.894
-   2         preReweighing posROC         0.587 -0.120       0.532
-   3   preDisparate posCalibrated         0.619 -0.483       1.000
-   4         preDisparate posROC         0.593 -0.133       0.559
-   5                preReweighing         0.587 -0.120       0.532
-   6                 preDisparate         0.675 -0.738       1.000
-   7                posCalibrated         0.619 -0.483       1.000
-   8                       posROC         0.593 -0.133       0.559
+   0                     baseline         0.695 -0.842       1.000
+   1  preReweighing posCalibrated         0.500  0.000       0.529
+   2         preReweighing posROC         0.590 -0.052       0.174
+   3   preDisparate posCalibrated         0.500  0.000       0.529
+   4          preDisparate posROC         0.564 -0.069       0.486
+   5                preReweighing         0.575 -0.094       0.483
+   6                 preDisparate         0.696 -0.845       1.000
+   7                posCalibrated         0.500  0.000       0.529
+   8                       posROC         0.567 -0.074       0.504
    fairest: preReweighing posROC
 
 ``fair_score`` is lower-is-fairer (see :doc:`/user_guide/utility_guide`), so
@@ -74,7 +74,8 @@ Results file
 ------------
 
 ``run_single_sensitive(results_dir='results')`` returns the rows and writes
-them to ``<results_dir>/experiment_<timestamp>.csv``. Columns: ``model``,
+them to ``<results_dir>/experiment_<timestamp>.csv``; ``results_dir=None``
+skips the file. Columns: ``model``,
 ``BM``, ``balanced_acc``, ``acc``, ``precision``, ``recall``, ``f1``, ``mcc``,
 ``eq_opp_diff``, ``avg_odd_diff``, ``spd``, ``disparate_impact``,
 ``theil_idx``, ``fair_score``.
@@ -127,7 +128,7 @@ favorable class in column 1.
    bmI = BMInterface(df, label="stroke", protected=["age"])
    grid = BMGridSearch(bmI, LinearSVC(), [[BMType.preReweighing]],
                        [{"age": 1}], [{"age": 0}])
-   rows = grid.run_single_sensitive()
+   rows = grid.run_single_sensitive(results_dir=None)
 
 In-processing mode
 ------------------
@@ -145,21 +146,21 @@ learner without mitigation). Combining one with a model raises ``ValueError``.
    df = pd.read_csv("examples/data/stroke_pre/stroke.csv")
    bmI = BMInterface(df, label="stroke", protected=["age"])
    grid = BMGridSearch(bmI, None, [[BMType.inAdversarial]], [{"age": 1}], [{"age": 0}])
-   rows = grid.run_single_sensitive()
+   rows = grid.run_single_sensitive(results_dir=None)
    print(pd.DataFrame(rows)[["model", "BM", "balanced_acc", "fair_score"]].round(3).to_string())
 
 .. code-block:: text
 
                      model        BM  balanced_acc  fair_score
-   0  AdversarialDebiasing  baseline         0.683         1.0
-   1  AdversarialDebiasing      inAD         0.681         1.0
+   0  AdversarialDebiasing  baseline         0.716         1.0
+   1  AdversarialDebiasing      inAD         0.630         1.0
 
 Caveats
 -------
 
-- Small groups make metrics noisy (the stroke test split has 189 rows).
-- ``posEqqOds`` can collapse to a trivial classifier when the validation
-  split is tiny (as with stroke), giving degenerate metrics.
+- Small groups make metrics noisy (the stroke test split has 511 rows).
+- ``posCalibrated`` and ``posEqqOds`` can collapse to a trivial classifier
+  when positives are rare (4.9% in stroke), giving degenerate metrics.
 - ``disparate_impact`` can be ``0`` or ``inf``; the score treats it as
   invalid and uses the default 0.1.
 - ``inAdversarial`` uses TensorFlow 1 graph mode and disables eager execution

@@ -41,10 +41,31 @@ from aif360.algorithms.postprocessing.calibrated_eq_odds_postprocessing import C
 from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.algorithms import Transformer
 
+from contextlib import contextmanager
 from enum import Enum
 
 import string
 import random
+
+@contextmanager
+def _preserve_matplotlib_backend():
+    """Undo BlackBoxAuditing's import-time ``matplotlib.use('Agg')``.
+
+    DisparateImpactRemover imports BlackBoxAuditing, which forces the Agg
+    backend; without this, plots in notebooks silently stop rendering.
+    """
+    try:
+        import matplotlib
+    except ImportError:
+        yield
+        return
+    backend = matplotlib.get_backend()
+    try:
+        yield
+    finally:
+        if matplotlib.get_backend() != backend:
+            matplotlib.use(backend)
+
 
 def get_random_string(N: int = 7) -> str:
     """
@@ -212,10 +233,10 @@ class BMManager:
             >>> bm_manager.pre_DR('gender')
             >>> # The training dataset is now repaired for the 'gender' attribute
         """
-        di = DisparateImpactRemover(repair_level=0.1,
-                                    sensitive_attribute=sensitive_attribute)
-
-        train_BLD_di = di.fit_transform(self.bmI.get_train_BLD())
+        with _preserve_matplotlib_backend():  # DIR's constructor imports BlackBoxAuditing
+            di = DisparateImpactRemover(repair_level=0.1,
+                                        sensitive_attribute=sensitive_attribute)
+            train_BLD_di = di.fit_transform(self.bmI.get_train_BLD())
         self.bmI.pre_BM_set(train_BLD_di)
 
     def pre_LFR(self) -> None:

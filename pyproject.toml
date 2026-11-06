@@ -24,6 +24,7 @@ dependencies = [
     # Required at runtime by aif360 DisparateImpactRemover (BMType.preDisparate).
     "BlackBoxAuditing>=0.1.54",
     "matplotlib>=3.8,<3.11",
+    "shapely>=2.0,<2.1",
     "seaborn>=0.13,<0.14",
     "prettytable>=3.9,<4",
     "tqdm>=4.66,<5",
@@ -54,7 +55,6 @@ cuda = [
 ]
 # Dependencies for examples/ and notebooks.
 examples = [
-    "shapely>=2.0,<2.1",
     "plotly>=5.19,<6",
     "kaleido>=0.2.1,<0.3",
     "statsmodels",
