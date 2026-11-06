@@ -1,10 +1,10 @@
 Changelog
 =========
 
-0.1.1 (2026-11-06)
+0.1.2 (2026-11-06)
 ------------------
 
-First release of the refactored library. Version 0.1.0 on PyPI was built by mistake from the pre-refactor code and is yanked; install 0.1.1 or later.
+First release of the refactored library. Versions 0.1.0 and 0.1.1 on PyPI were built by mistake from the pre-refactor code; do not use them. Install 0.1.2 or later.
 
 Added
 ~~~~~

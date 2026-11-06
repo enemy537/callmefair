@@ -6,11 +6,11 @@ Requires Python 3.11 or newer.
 .. code-block:: bash
 
    uv venv --python 3.11 && source .venv/bin/activate
-   uv pip install "callmefair[dl]>=0.1.1"
+   uv pip install "callmefair[dl]>=0.1.2"
 
 .. note::
 
-   Use 0.1.1 or later. Older PyPI versions (up to 0.1.0) contain the
+   Use 0.1.2 or later. Older PyPI versions (up to 0.1.1) contain the
    pre-refactor code and the bugs listed in :doc:`/changelog`.
 
 With pip: ``pip install "callmefair[dl]"``. The core install covers
