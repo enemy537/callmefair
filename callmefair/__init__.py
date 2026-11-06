@@ -13,7 +13,7 @@ pull in TensorFlow, PyTorch or AIF360 until a class is actually used.
 from importlib import import_module
 from typing import TYPE_CHECKING
 
-__version__ = "0.1.0"  # single source of truth; read by hatch (see pyproject.toml)
+__version__ = "0.1.1"  # single source of truth; read by hatch (see pyproject.toml)
 __author__ = "CallMeFair Team"
 __description__ = "A comprehensive framework for automatic bias mitigation in AI systems"
 

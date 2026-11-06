@@ -6,13 +6,12 @@ Requires Python 3.11 or newer.
 .. code-block:: bash
 
    uv venv --python 3.11 && source .venv/bin/activate
-   uv pip install "callmefair[dl]"
+   uv pip install "callmefair[dl]>=0.1.1"
 
 .. note::
 
-   Until 0.1.0 is published, PyPI serves 0.0.1 (no declared dependencies and
-   the bugs listed in :doc:`/changelog`). Install from source instead:
-   ``uv pip install "callmefair[dl] @ git+https://github.com/enemy537/callmefair.git"``.
+   Use 0.1.1 or later. Older PyPI versions (up to 0.1.0) contain the
+   pre-refactor code and the bugs listed in :doc:`/changelog`.
 
 With pip: ``pip install "callmefair[dl]"``. The core install covers
 scikit-learn, XGBoost, LightGBM, CatBoost and AIF360; ``dl`` adds the deep

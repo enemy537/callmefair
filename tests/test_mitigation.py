@@ -19,7 +19,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 STROKE = ROOT / "examples" / "data" / "stroke_pre" / "stroke.csv"
-ORIGINAL_REV = "e2490ef"  # "Original snapshot (pre-baseline)": untouched mitigation code
+ORIGINAL_REV = "b56db8e"  # last commit before the refactor ("journal update"): original code
 NUMERIC = ["balanced_acc", "acc", "precision", "recall", "f1", "mcc", "eq_opp_diff",
            "avg_odd_diff", "spd", "disparate_impact", "theil_idx", "fair_score"]
 
@@ -68,8 +68,11 @@ def run_rows(tree: Path, cwd: Path, model: str, *sets: str) -> list[dict]:
 @pytest.fixture(scope="module")
 def original_tree(tmp_path_factory) -> Path:
     tree = tmp_path_factory.mktemp("original")
-    archive = subprocess.run(["git", "archive", ORIGINAL_REV, "callmefair"], cwd=ROOT,
-                             capture_output=True, check=True).stdout
+    proc = subprocess.run(["git", "archive", ORIGINAL_REV, "callmefair"], cwd=ROOT,
+                          capture_output=True)
+    if proc.returncode != 0:  # no git history (sdist, shallow clone)
+        pytest.skip(f"original commit {ORIGINAL_REV} not available: {proc.stderr.decode()[:200]}")
+    archive = proc.stdout
     subprocess.run(["tar", "-x", "-C", str(tree)], input=archive, check=True)
     return tree
 
