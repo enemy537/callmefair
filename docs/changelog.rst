@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.1.0 (unreleased)
+0.1.0 (2026-11-06)
 ------------------
 
 Added
@@ -9,10 +9,18 @@ Added
 
 * ``callmefair.audit``: ``audit_predictions`` / ``audit_file`` / ``BiasReport`` measure the bias of the predictions of any classifier (CSV or DataFrame with true label, prediction and group columns), plus ``python -m callmefair.audit``; ``plot_group_rates`` accepts a ``BiasReport``.
 * ``callmefair.viz`` plotting module (trade-off scatter, heatmap, mitigation effect, fair ranges, bias search, group rates, threshold sweep, trade-off map).
-* ``callmefair.tradeoff``: paper-faithful Fairea trade-off map (Hort et al., 2021): mutation baseline averaged over splits and repetitions (``create_baseline``), strategy selection, normalisation by the baseline's range, the paper's five regions and Fig. 3 areas (``tradeoff_regions``). Defaults: balanced accuracy and ``|SPD|``; ``'acc'``, ``'aod'``, ``'eod'``, ``'fair_score'`` and ``'fair_score_uncapped'`` are options.
+* ``callmefair.tradeoff``: paper-faithful Fairea trade-off map (Hort et al., 2021): mutation baseline averaged over splits and repetitions (``create_baseline``), strategy selection, normalisation by the baseline's range, the paper's five regions and Fig. 3 areas (``tradeoff_regions``), one baseline per model (pass a mapping model -> baseline). ``plot_tradeoff_map`` draws the metrics' own units like the paper's Fig. 2 (``normalized=True`` for the normalised space), one panel per model. Defaults: balanced accuracy and ``|SPD|``; ``'acc'``, ``'aod'``, ``'eod'``, ``'fair_score'`` and ``'fair_score_uncapped'`` are options.
 * ``calculate_fairness_score`` returns ``uncapped_score`` (the composite score without the clip at 1); grid-search rows gain a ``fair_score_uncapped`` column. Use it on the trade-off map: the clipped score saturates for strongly biased models.
 * ``BMMetrics.threshold_curve()``.
 * ``METRIC_RANGES`` and ``METRIC_OPTIMA`` in ``callmefair.util.fair_util``.
+* ``callmefair.util.device`` (CUDA, MPS or CPU detection; ``CALLMEFAIR_DEVICE`` override).
+* ``register_model`` for the bias search model registry.
+* ``register_adapter`` for the grid search model adapter registry.
+* ``delete_sources`` argument of ``aggregate_csv_files``.
+* ``BMGridSearch.run_single_sensitive(results_dir=None)`` skips CSV logging.
+* ``progress=False`` on ``BiasSearch`` disables the tqdm bars.
+* Example notebook series ``00`` to ``06`` and the ``fhg_examples`` helper package (datasets, preprocessing, trade-off map); the preprocessing reproduces the shipped CSVs from raw files (``examples/data/raw/README.md``).
+* Installation extras ``dl``, ``mac``, ``cuda``, ``examples`` and ``dev``.
 
 Fixed
 ~~~~~
@@ -31,6 +39,7 @@ Fixed
 * Example trade-off code (``examples/Fairea``, now ``callmefair.tradeoff``): regions were drawn with an inverted accuracy axis, so they were flipped (a method with the original accuracy and much lower bias was labelled "bad trade-off"); baseline and methods were normalised over different ranges; the composite fairness score made the baseline non-linear and saturating; plain-accuracy baselines on imbalanced data were invalid (mutating to the majority label raises accuracy; ``baseline_curve`` now warns); ``compute_area`` raised on most inputs. Trade-off maps made with the old code should be re-examined.
 * ``shapely`` is no longer a dependency of the library (only a dev/test extra).
 * Stroke data pipeline: the old ``stroke.csv`` merged a NearMiss-undersampled training split with untouched validation/test rows (leakage), used an age cut-off (73) tuned on the outcome labels, and integer-coded nominal features. ``work_type`` and ``smoking_status`` are now one-hot and ``age`` is 1 for 65 or older.
+* ``preLFR`` replaced the training labels with LFR's own predictions (all 0 on stroke), so models could not be fitted; the true labels are now kept.
 
 Changed
 ~~~~~~~
@@ -41,19 +50,8 @@ Changed
 * ``BlackBoxAuditing`` is a required dependency (needed by ``preDisparate``).
 * ``import callmefair`` is lazy and no longer loads TensorFlow, PyTorch or AIF360.
 * TabNet runs on CUDA or CPU; MPS is not used.
-
-Added
-~~~~~
-
-* ``callmefair.util.device`` (CUDA, MPS or CPU detection; ``CALLMEFAIR_DEVICE`` override).
-* ``register_model`` for the bias search model registry.
-* ``register_adapter`` for the grid search model adapter registry.
-* ``delete_sources`` argument of ``aggregate_csv_files``.
-* ``BMGridSearch.run_single_sensitive(results_dir=None)`` skips CSV logging.
-* ``progress=False`` on ``BiasSearch`` disables the tqdm bars.
-* Example notebook series ``00`` to ``05`` and the ``fhg_examples`` helper package (datasets, preprocessing, trade-off map); the preprocessing reproduces the shipped CSVs from raw files (``examples/data/raw/README.md``).
 * Models registered in a notebook are not visible to worker processes; use ``BiasSearch(..., backend="thread")`` for them.
-* Installation extras ``dl``, ``mac``, ``cuda``, ``examples`` and ``dev``.
+* Project URLs point to https://github.com/enemy537/callmefair.
 
 Removed
 ~~~~~~~

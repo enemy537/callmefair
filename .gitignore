@@ -11,3 +11,4 @@ docs/_build/
 examples/data/raw/*
 !examples/data/raw/README.md
 examples/notebooks/results/
+dist/

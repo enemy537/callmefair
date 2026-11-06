@@ -69,7 +69,7 @@ We introduce **FairHealthGrid**, a comprehensive framework that addresses critic
 Current evaluations focus on single protected attributes. Future research will address intersectional bias from interacting sensitive features, expand to new data modalities, and formalize a comprehensive bias taxonomy using causal fairness frameworks.
 
 
-![Pipeline](figures/pipeline.png)
+![Pipeline](https://raw.githubusercontent.com/enemy537/callmefair/main/figures/pipeline.png)
 
 *Figure 1: Proposed approach consists of three main stages: (A) Grid Search, where multiple machine learning models (ML) and bias mitigation (BM) strategies are evaluated; (B) Computation of the Combined Fairness Score (𝓕), aggregating multiple fairness measures to quantify bias; and (C) Fairness Trade-off Mapping, which utilizes the baseline fairness score 𝓕baseline and naive mutation strategies (𝓕10–𝓕100) to generate a trade-off curve. The final trade-off map categorizes models into trade-off regions.*
 

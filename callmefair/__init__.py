@@ -4,7 +4,7 @@ CallMeFair: A Comprehensive Framework for Automatic Bias Mitigation in AI System
 Tools to identify, measure and reduce algorithmic bias in machine learning
 models through preprocessing, in-processing and postprocessing methods.
 
-More information: https://github.com/uofc-ai2lab/callmefair/
+More information: https://github.com/enemy537/callmefair/
 
 Public names are imported lazily (PEP 562) so ``import callmefair`` does not
 pull in TensorFlow, PyTorch or AIF360 until a class is actually used.

@@ -12,14 +12,14 @@ Requires Python 3.11 or newer.
 
    Until 0.1.0 is published, PyPI serves 0.0.1 (no declared dependencies and
    the bugs listed in :doc:`/changelog`). Install from source instead:
-   ``uv pip install "callmefair[dl] @ git+https://github.com/uofc-ai2lab/callmefair.git"``.
+   ``uv pip install "callmefair[dl] @ git+https://github.com/enemy537/callmefair.git"``.
 
 With pip: ``pip install "callmefair[dl]"``. The core install covers
 scikit-learn, XGBoost, LightGBM, CatBoost and AIF360; ``dl`` adds the deep
 models (TabTransformer, MLP, AdversarialDebiasing, TabNet).
 
 For development, from a clone of
-`the repository <https://github.com/uofc-ai2lab/callmefair/>`_:
+`the repository <https://github.com/enemy537/callmefair/>`_:
 
 .. code-block:: bash
 

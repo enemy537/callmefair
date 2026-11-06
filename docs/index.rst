@@ -78,4 +78,4 @@ License
 -------
 
 MIT; see the ``LICENSE`` file in the
-`repository <https://github.com/uofc-ai2lab/callmefair/>`_.
+`repository <https://github.com/enemy537/callmefair/>`_.
