@@ -69,6 +69,11 @@ baseline and the grid.
 
 The figure uses **illustrative numbers** (a made-up straight baseline and grid rows), not a run.
 
+Each mitigation is judged against the *original model it was applied to*, so pass one
+baseline per model (``{model_name: create_baseline(...)}``); the map then has one panel per
+model. The map is drawn in the metrics' own units, like the paper's Fig. 2
+(``normalized=True`` shows Fairea's normalised space instead; regions are the same).
+
 .. plot::
 
     import numpy as np
@@ -77,12 +82,14 @@ The figure uses **illustrative numbers** (a made-up straight baseline and grid r
     from callmefair.viz import plot_tradeoff_map
 
     degree = np.round(np.linspace(0, 1, 11), 1)
-    baseline_df = pd.DataFrame({
-        "strategy": "to_1", "degree": degree,
-        "acc": 0.9 - 0.4 * degree, "balanced_acc": 0.75 - 0.25 * degree,
-        "spd": 0.40 * (1 - degree), "aod": 0.30 * (1 - degree),
-        "eod": 0.30 * (1 - degree), "fair_score": 0.60 * (1 - degree),
-    })
+    def baseline(bacc0, spd0):        # illustrative create_baseline() output: linear decay
+        return pd.DataFrame({
+            "strategy": "to_1", "degree": degree,
+            "acc": bacc0 + 0.1 - (bacc0 - 0.4) * degree, "balanced_acc": bacc0 - (bacc0 - 0.5) * degree,
+            "spd": spd0 * (1 - degree), "aod": 0.75 * spd0 * (1 - degree),
+            "eod": 0.75 * spd0 * (1 - degree), "fair_score": 1.5 * spd0 * (1 - degree),
+        })
+    baselines = {"LogisticRegression": baseline(0.75, 0.40), "XGBClassifier": baseline(0.78, 0.42)}
     def row(model, bm, bacc, spd):
         return {"model": model, "BM": bm, "acc": bacc + 0.1, "balanced_acc": bacc, "spd": spd,
                 "avg_odd_diff": spd, "eq_opp_diff": spd, "fair_score": spd * 1.5}
@@ -95,8 +102,8 @@ The figure uses **illustrative numbers** (a made-up straight baseline and grid r
         row("XGBClassifier", "posROC", 0.66, 0.25),
         row("XGBClassifier", "posEqqOds", 0.70, 0.05),
     ]
-    regions_df = tradeoff_regions(baseline_df, rows)
-    fig = plot_tradeoff_map(baseline_df, regions_df)
+    regions_df = tradeoff_regions(baselines, rows)   # one baseline per model
+    fig = plot_tradeoff_map(baselines, regions_df)    # one panel per model
 
 Use more splits and repetitions than a quick run for real analyses; points close to the baseline
 are ties within noise.

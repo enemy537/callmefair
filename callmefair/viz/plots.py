@@ -441,21 +441,29 @@ def plot_bias_search(table, *, score: str = 'Normalized Fairness score', ax=None
 
 
 # ------------------------------------------------------------------ 7. group rates
-def plot_group_rates(bmM, *, ax=None):
-    """Selection rate, TPR and FPR for privileged vs. unprivileged groups (test split).
+def plot_group_rates(bmM_or_report, *, attribute=None, model=None, ax=None):
+    """Selection rate, TPR and FPR for privileged vs. unprivileged groups.
 
     Args:
-        bmM: a ``BMMetrics`` (uses its ``cmetrics``).
+        bmM_or_report: a ``BMMetrics`` (uses its ``cmetrics``, test split) or a
+            ``callmefair.audit.BiasReport`` (uses its group table).
+        attribute, model: which audit of a ``BiasReport`` to draw (optional when unambiguous).
         ax: optional axes.
     Returns:
         The matplotlib Figure.
     """
-    cm = bmM.cmetrics
     created = ax is None
     names = ['selection rate', 'true positive rate', 'false positive rate']
-    fns = [cm.selection_rate, cm.true_positive_rate, cm.false_positive_rate]
-    priv = [f(privileged=True) for f in fns]
-    unpriv = [f(privileged=False) for f in fns]
+    if hasattr(bmM_or_report, 'cmetrics'):
+        cm = bmM_or_report.cmetrics
+        fns = [cm.selection_rate, cm.true_positive_rate, cm.false_positive_rate]
+        priv = [f(privileged=True) for f in fns]
+        unpriv = [f(privileged=False) for f in fns]
+    else:
+        table = bmM_or_report.groups(attribute, model).set_index('group')
+        cols = ['selection_rate', 'TPR', 'FPR']
+        priv = list(np.nan_to_num(table.loc['privileged', cols].to_numpy(dtype=float)))
+        unpriv = list(np.nan_to_num(table.loc['unprivileged', cols].to_numpy(dtype=float)))
     fig, ax = _style.new_axes(ax, figsize=(6.6, 4.2))
     x, w = np.arange(3), 0.36
     ax.bar(x - w / 2, priv, w, color=_style.color(0), label='privileged', zorder=3,
@@ -470,7 +478,7 @@ def plot_group_rates(bmM, *, ax=None):
     ax.set_ylim(0, top * 1.25)
     ax.set_xticks(x, names)
     ax.grid(False, axis='x')
-    ax.set_ylabel('rate (test split)')
+    ax.set_ylabel('rate')
     ax.set_title('Group rates behind the fairness metrics')
     ax.legend(frameon=False, fontsize=8, loc='upper right')
     _fit(fig, created)

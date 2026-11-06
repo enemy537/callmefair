@@ -255,7 +255,12 @@ class BMManager:
             >>> # The training dataset now has fair representations
         """
         lfr = LFR(unprivileged_groups=self.unprivileged_group, privileged_groups=self.privileged_group)
-        train_BLD_lfr = lfr.fit_transform(self.bmI.get_train_BLD())
+        train_BLD = self.bmI.get_train_BLD()
+        train_BLD_lfr = lfr.fit_transform(train_BLD)
+        # LFR learns a fair *representation*; the downstream model still learns the true
+        # outcome. aif360 also overwrites the labels with LFR's own predictions, which on
+        # rare outcomes collapse to a single class (e.g. stroke: all 149 positives -> 0).
+        train_BLD_lfr.labels = train_BLD.labels.copy()
         self.bmI.pre_BM_set(train_BLD_lfr)
 
     def in_AD(self, debias: bool = False) -> AdversarialDebiasing:

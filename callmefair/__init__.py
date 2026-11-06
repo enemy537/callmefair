@@ -28,11 +28,15 @@ _EXPORTS = {
     "BMInterface": ".util.fair_util",
     "BMMetrics": ".util.fair_util",
     "calculate_fairness_score": ".util.fair_util",
+    "audit_predictions": ".audit",
+    "audit_file": ".audit",
+    "BiasReport": ".audit",
 }
 
 __all__ = list(_EXPORTS)
 
 if TYPE_CHECKING:
+    from .audit import BiasReport, audit_file, audit_predictions
     from .mitigation.fair_bm import BMManager, BMType
     from .mitigation.fair_grid import BMGridSearch
     from .search._search_base import BaseSearch, CType, combine_attributes

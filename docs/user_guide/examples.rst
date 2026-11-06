@@ -16,6 +16,8 @@ order; each builds on the previous one. The shared helpers live in the
    (:doc:`/user_guide/tradeoff_map_guide`).
 6. ``05_advanced_models_and_hardware``: compare model families, register your own, and
    choose hardware.
+7. ``06_audit_external_predictions``: audit a CSV of predictions from a model trained outside
+   callmefair (:doc:`/user_guide/audit_guide`).
 
 To run them, from a clone of the repository:
 

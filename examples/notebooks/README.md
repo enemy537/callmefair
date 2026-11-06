@@ -10,6 +10,7 @@ A step-by-step series on real healthcare data. Each notebook builds on the previ
 | 03 | [Bias mitigation](03_bias_mitigation.ipynb) | diabetes | Pre-, in- and post-processing, then a grid search over models × mitigations |
 | 04 | [Trade-off map](04_tradeoff_map.ipynb) | diabetes | Is a mitigation better than simply degrading the model? |
 | 05 | [Advanced models and hardware](05_advanced_models_and_hardware.ipynb) | stroke | Model zoo, custom models and adapters, CUDA / MPS / CPU, intersectional grid |
+| 06 | [Audit external predictions](06_audit_external_predictions.ipynb) | stroke | Check the bias of any classifier's predictions from a CSV, in Python or from the command line |
 
 ## Running
 

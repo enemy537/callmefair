@@ -98,6 +98,8 @@ def test_non_post_rows_match_original(original_tree, current, tmp_path):
     for old, new in zip(expected, rows):
         assert old["model"] == new["model"] == "LogisticRegression"
         assert old["BM"] == new["BM"]
+        if new["BM"] == "preLFR":   # intentional change: LFR keeps the true training labels
+            continue
         for col in NUMERIC:
             expected_val = old[col]
             # Intentional change: F1/MCC are 0.0 (not nan) when their denominator is 0.
@@ -406,3 +408,16 @@ def test_pre_dr_keeps_matplotlib_backend(tmp_path):
     """)
     proc = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, capture_output=True, timeout=300)
     assert proc.returncode == 0, proc.stderr.decode()[-1500:]
+
+
+def test_lfr_keeps_true_training_labels():
+    """Regression: aif360's LFR overwrote training labels with its own predictions, which
+    collapse to one class on rare outcomes (stroke) and make every model fail to fit."""
+    import numpy as np
+    from callmefair import BMInterface, BMManager
+    df = pd.read_csv(STROKE)
+    bmI = BMInterface(df, "stroke", ["age"], random_state=0, test_size=0.2, val_size=0.2)
+    before = bmI.get_train_BLD().labels.copy()
+    BMManager(bmI, [{"age": 1}], [{"age": 0}]).pre_LFR()
+    after = bmI.get_train_BLD()
+    assert np.array_equal(after.labels, before) and len(np.unique(after.labels)) == 2

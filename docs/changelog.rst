@@ -7,6 +7,7 @@ Changelog
 Added
 ~~~~~
 
+* ``callmefair.audit``: ``audit_predictions`` / ``audit_file`` / ``BiasReport`` measure the bias of the predictions of any classifier (CSV or DataFrame with true label, prediction and group columns), plus ``python -m callmefair.audit``; ``plot_group_rates`` accepts a ``BiasReport``.
 * ``callmefair.viz`` plotting module (trade-off scatter, heatmap, mitigation effect, fair ranges, bias search, group rates, threshold sweep, trade-off map).
 * ``callmefair.tradeoff``: paper-faithful Fairea trade-off map (Hort et al., 2021): mutation baseline averaged over splits and repetitions (``create_baseline``), strategy selection, normalisation by the baseline's range, the paper's five regions and Fig. 3 areas (``tradeoff_regions``). Defaults: balanced accuracy and ``|SPD|``; ``'acc'``, ``'aod'``, ``'eod'``, ``'fair_score'`` and ``'fair_score_uncapped'`` are options.
 * ``calculate_fairness_score`` returns ``uncapped_score`` (the composite score without the clip at 1); grid-search rows gain a ``fair_score_uncapped`` column. Use it on the trade-off map: the clipped score saturates for strongly biased models.

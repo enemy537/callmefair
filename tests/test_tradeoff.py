@@ -141,7 +141,8 @@ def test_tradeoff_regions_columns_and_attrs():
     assert list(reg["BM"]) == ["preReweighing", "posROC"]     # baseline rows dropped
     assert list(reg["region"]) == ["good trade-off", "bad trade-off"]
     assert reg.loc[0, "area"] > 0 and reg.loc[1, "area"] == 0
-    assert reg.attrs == {"strategy": "to_1", "accuracy": "balanced_acc", "bias": "spd"}
+    assert reg.attrs["strategies"] == {"LR": "to_1"}
+    assert (reg.attrs["accuracy"], reg.attrs["bias"]) == ("balanced_acc", "spd")
 
 
 def test_plot_tradeoff_map_returns_figure():
@@ -150,4 +151,51 @@ def test_plot_tradeoff_map_returns_figure():
     base = _baseline_df()
     fig = plot_tradeoff_map(base, tradeoff_regions(base, ROWS))
     assert fig.axes and fig.axes[0].get_title() == "Fairea trade-off map"
+    plt.close("all")
+
+
+def test_regions_do_not_depend_on_normalisation():
+    """Min-max scaling each axis is monotone affine, so classifying in the metrics' own units
+    (as the map is drawn, paper Fig. 2) gives the same regions as Fairea's normalised space."""
+    rng = np.random.default_rng(1)
+    acc = 0.73 - 0.023 * np.arange(11) + rng.normal(0, 0.003, 11)    # degree 0 .. 100 %
+    bias = 0.875 * (1 - np.linspace(0, 1, 11))
+    pts = {i: (a, b) for i, (a, b) in enumerate(zip(rng.uniform(0.45, 0.8, 300),
+                                                    rng.uniform(-0.05, 1.1, 300)))}
+    acc_n, bias_n, pts_n = normalize(acc, bias, pts)
+    assert classify_region(bias, acc, pts) == classify_region(bias_n, acc_n, pts_n)
+
+
+def test_plot_tradeoff_map_draws_metric_units_by_default():
+    import matplotlib.pyplot as plt
+    from callmefair.viz import plot_tradeoff_map
+    base = _baseline_df()
+    reg = tradeoff_regions(base, ROWS)
+    ax = plot_tradeoff_map(base, reg).axes[0]
+    assert "normalised" not in ax.get_xlabel() and ax.get_ylim()[0] > 0.3    # real accuracy
+    ax_n = plot_tradeoff_map(base, reg, normalized=True).axes[0]
+    assert ax_n.get_xlabel().startswith("normalised")
+    plt.close("all")
+
+
+def test_one_baseline_per_model():
+    rows = ROWS + [dict(r, model="XGB") for r in ROWS]
+    with pytest.raises(ValueError, match="one baseline per model"):
+        tradeoff_regions(_baseline_df(), rows)
+    other = _baseline_df(acc0=0.60, bias0=0.4)          # XGB's own original model
+    reg = tradeoff_regions({"LR": _baseline_df(), "XGB": other}, rows)
+    lr, xgb = reg[reg.model == "LR"], reg[reg.model == "XGB"]
+    assert list(lr.region) == ["good trade-off", "bad trade-off"]
+    # same mitigation numbers, different reference: XGB's original is less accurate and fairer
+    assert xgb.set_index("BM").at["preReweighing", "region"] == "win-win"
+    assert reg.attrs["strategies"] == {"LR": "to_1", "XGB": "to_1"}
+
+
+def test_multi_model_map_has_one_panel_per_model():
+    import matplotlib.pyplot as plt
+    from callmefair.viz import plot_tradeoff_map
+    rows = ROWS + [dict(r, model="XGB") for r in ROWS]
+    bases = {"LR": _baseline_df(), "XGB": _baseline_df(acc0=0.60, bias0=0.4)}
+    fig = plot_tradeoff_map(bases, tradeoff_regions(bases, rows))
+    assert [a.get_title() for a in fig.axes] == ["LR", "XGB"]
     plt.close("all")

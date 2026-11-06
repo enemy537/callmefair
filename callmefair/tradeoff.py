@@ -228,12 +228,17 @@ def compute_area(base_bias, base_acc, method: tuple[float, float]) -> float:
 
 # ---------------------------------------------------------------- one call for users
 
-def tradeoff_regions(baseline: pd.DataFrame, results, *, strategy: str | None = None,
+def tradeoff_regions(baseline, results, *, strategy: str | None = None,
                      accuracy: str = "balanced_acc", bias: str = "spd") -> pd.DataFrame:
     """Place grid-search results on the Fairea map.
 
+    Fairea compares each mitigation with the *original model it was applied to*, so
+    every model needs its own baseline: pass ``{model_name: create_baseline(...)}``
+    (keys = the ``model`` column of the results, e.g. ``"XGBClassifier"``). A single
+    DataFrame is accepted when all rows come from one model.
+
     Args:
-        baseline: output of :func:`create_baseline`.
+        baseline: :func:`create_baseline` output, or a mapping model name -> output.
         results: ``BMGridSearch.run_single_sensitive`` rows (list of dicts or DataFrame);
             ``BM == 'baseline'`` rows are dropped and repeated (model, BM) rows averaged.
         strategy: mutation strategy; default = Fairea's rule (:func:`select_strategy`).
@@ -248,14 +253,37 @@ def tradeoff_regions(baseline: pd.DataFrame, results, *, strategy: str | None = 
         DataFrame with ``model, BM, accuracy, bias, acc_norm, bias_norm, region,
         paper_region, area``; ``.attrs`` records strategy/accuracy/bias for plotting.
     """
-    strategy = strategy or select_strategy(baseline, accuracy=accuracy)
-    curve = baseline_curve(baseline, strategy, accuracy=accuracy, bias=bias)
     rows = pd.DataFrame(results)
     rows = rows[rows["BM"] != "baseline"].copy()
+    models = list(dict.fromkeys(rows["model"]))
+    if isinstance(baseline, pd.DataFrame):
+        if len(models) > 1:
+            raise ValueError(f"results contain {len(models)} models {models}; Fairea needs one "
+                             "baseline per model: pass {model_name: create_baseline(...)}")
+        baselines = {m: baseline for m in models}
+    else:
+        missing = [m for m in models if m not in baseline]
+        if missing:
+            raise ValueError(f"no baseline for model(s) {missing}; keys: {list(baseline)}")
+        baselines = dict(baseline)
+    parts, strategies = [], {}
+    for m in models:
+        part = _regions_one_model(baselines[m], rows[rows["model"] == m], strategy, accuracy, bias)
+        strategies[m] = part.attrs["strategy"]
+        parts.append(part)
+    out = pd.concat(parts, ignore_index=True) if parts else rows
+    out.attrs = {"strategy": strategy, "strategies": strategies, "accuracy": accuracy,
+                 "bias": bias}
+    return out
+
+
+def _regions_one_model(baseline: pd.DataFrame, rows: pd.DataFrame, strategy, accuracy, bias):
+    strategy = strategy or select_strategy(baseline, accuracy=accuracy)
+    curve = baseline_curve(baseline, strategy, accuracy=accuracy, bias=bias)
+    rows = rows.copy()
     rows["accuracy"] = rows[ACCURACY_METRICS[accuracy]].astype(float)
     rows["bias"] = rows[BIAS_METRICS[bias]].astype(float).abs()
     rows = rows.groupby(["model", "BM"], as_index=False, sort=False)[["accuracy", "bias"]].mean()
-
     base_acc, base_bias, norm = normalize(curve["accuracy"], curve["bias"],
                                           {i: (a, b) for i, a, b in
                                            zip(rows.index, rows["accuracy"], rows["bias"])})
@@ -265,5 +293,5 @@ def tradeoff_regions(baseline: pd.DataFrame, results, *, strategy: str | None = 
     rows["region"] = [regions[i] for i in rows.index]
     rows["paper_region"] = rows["region"].map(PAPER_NAMES)
     rows["area"] = [compute_area(base_bias, base_acc, norm[i]) for i in rows.index]
-    rows.attrs = {"strategy": strategy, "accuracy": accuracy, "bias": bias}
-    return rows.reset_index(drop=True)
+    rows.attrs = {"strategy": strategy}
+    return rows
